@@ -46,8 +46,6 @@ function CloseMenu(self)
     
     for i = 1,4 do
         self.parent[i]:EnableInput(false)
-        self.parent[i]:EnableMoving(false)
-        self.parent[i]:EnableResizing(false)
         self.parent[i]:Hide()
     end
 end
@@ -85,8 +83,6 @@ function OpenMenu(self)
     for i = 1,NUM_MENU_OPT do
         menu[i]:Show()
         menu[i]:EnableInput(true)
-        menu[i]:EnableMoving(true)
-        menu[i]:EnableResizing(true)
     end
 end
 
@@ -107,5 +103,3 @@ pagebutton.texture:SetBlendMode("BLEND")
 pagebutton.texture:SetTexCoord(0,1.0,0,1.0)
 pagebutton:EnableInput(true)
 pagebutton:Show()
-​
-

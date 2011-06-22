@@ -10,8 +10,9 @@ HEIGHT_MENU_OPT = 30
 DPrint("Welcome to urMenu!")
 
 function PictureRandomly(self)
-    DPrint("in PictureRandomly")
-    self.parent.caller.t:SetTexture(pics[math.random(1,5)])
+    self.parent.caller.bkg = pics[math.random(1,5)]
+    self.parent.caller.t:SetTexture(self.parent.caller.bkg)
+    DPrint("background pic: "..self.parent.caller.bkg)
 end
 
 function ColorRandomly(self)
@@ -22,6 +23,7 @@ end
 function ClearToWhite(self)
     DPrint("in ClearToWhite")
     self.parent.caller.t:SetTexture(255,255,255,255) -- TODO original texture not removed
+    -- self.parent.caller.t:Clear()
     self.parent.caller.t:SetSolidColor(255,255,255,255)
 end
 
@@ -38,7 +40,7 @@ end
 
 function CloseMenu(self)
     DPrint("in CloseMenu")
-    
+    self.parent.state = 0
     for i = 1,self.parent.num do
         self.parent[i]:EnableInput(false)
         self.parent[i]:Hide()
@@ -49,7 +51,7 @@ Menu = {}
 Menu.__index = Menu
 
 function Menu:CreateOption(name,background,w,h,func)
-    local opt = Region() -- TODO ?? local ??
+    local opt = Region() 
     opt.parent = self
     opt.type = name
     opt.tl = opt:TextLabel()
@@ -79,17 +81,25 @@ function Menu.Create(region,background,optionList,funcionList,numOptions)
     
     local menu = {}
     setmetatable(menu,Menu)
+    local len = 0
     local w
     local h = HEIGHT_MENU_OPT
     menu.caller = region
     menu.num = numOptions
     menu.bkg = background
     
-    w = MIN_WIDTH_MENU -- TODO temp value for w, should be a proper length against length of option desc
-    if w < MIN_WIDTH_MENU then
+    for i = 1,numOptions do
+        if len < string.len(optionList[i]) then
+            len = string.len(optionList[i])
+        end
+    end
+    
+    if len <= 10 then
         w = MIN_WIDTH_MENU
-    elseif w > MAX_WIDTH_MENU then
-         w = MAX_WIDTH_MENU
+    elseif len >= 20 then -- TODO too long name cant be displayed
+        w = MAX_WIDTH_MENU
+    else
+        w = len*10
     end
 
     for i = 1,numOptions do
@@ -105,10 +115,20 @@ end
 
 
 function OpenMenu(self)
-    for i = 1,self.menu.num do
-        self.menu[i]:Show()
-        self.menu[i]:EnableInput(true)
+    if self.menu.state == 0 then
+        for i = 1,self.menu.num do
+            self.menu[i]:Show()
+            self.menu[i]:EnableInput(true)
+        end
+        self.menu.state = 1
+    else 
+        for i = 1,self.menu.num do
+            self.menu[i]:Hide()
+            self.menu[i]:EnableInput(false)
+        end
+        self.menu.state = 0
     end
+    
 end
 
 FreeAllRegions()
@@ -123,9 +143,11 @@ r:Show()
 txt = {"Random pic","Random color","Clear","Remove","Cancel"}
 pics = {"vinyl.png","Ornament1.png","Pirate1.png","Play.png","Right.png"}
 tap = {PictureRandomly, ColorRandomly, ClearToWhite, RecycleSelf, CloseMenu}
-menu = Menu.Create(r,"Sequence 01008.png",txt,tap,5)
+menu = Menu.Create(r,"Sequence 01026.png",txt,tap,5)
+menu.state = 0 -- open is 1, close is 0
 
 r.menu = menu
+r.bkg = {}
 r:Handle("OnDoubleTap",OpenMenu)
 
 
@@ -142,4 +164,4 @@ pagebutton.texture:SetGradientColor("BOTTOM",255,255,255,255,255,255,255,255)
 pagebutton.texture:SetBlendMode("BLEND")
 pagebutton.texture:SetTexCoord(0,1.0,0,1.0)
 pagebutton:EnableInput(true)
-pagebutton:Show()​
+pagebutton:Show()

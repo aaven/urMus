@@ -1570,8 +1570,8 @@
 		<string>PrimaryDocumentVisibleCharacterRange</string>
 		<string>HideAllIssues</string>
 		<string>PrimaryDocumentSelectedCharacterRange</string>
-		<real>331705459.37501699</real>
-		<string>{10961, 742}</string>
+		<real>331711822.79657203</real>
+		<string>{10720, 830}</string>
 		<string>{11273, 1}</string>
 		<string>Xcode.IDEKit.EditorDocument.SourceCode</string>
 		<dict>
@@ -1615,7 +1615,7 @@
 				</dict>
 			</array>
 		</dict>
-		<string>{{0, 0}, {640, 378}}</string>
+		<string>{{0, 0}, {640, 400}}</string>
 		<dict>
 			<key>$class</key>
 			<dict>
@@ -1996,7 +1996,7 @@
 			</array>
 		</dict>
 		<string>IDEEditor</string>
-		<real>203</real>
+		<real>200</real>
 		<dict>
 			<key>$class</key>
 			<dict>
@@ -2027,7 +2027,7 @@
 			</array>
 		</dict>
 		<string>IDEDebuggerArea</string>
-		<real>499</real>
+		<real>200</real>
 		<dict>
 			<key>$class</key>
 			<dict>
@@ -8714,8 +8714,8 @@
 				</dict>
 			</array>
 		</dict>
-		<real>331705327.91521698</real>
-		<string>{2127, 707}</string>
+		<real>331711799.479689</real>
+		<string>{1847, 707}</string>
 		<string>{2581, 0}</string>
 		<dict>
 			<key>$class</key>
@@ -9095,8 +9095,8 @@
 				</dict>
 			</array>
 		</dict>
-		<real>331705459.37415302</real>
-		<string>{10961, 742}</string>
+		<real>331711822.79586601</real>
+		<string>{10720, 830}</string>
 		<string>{11273, 1}</string>
 		<dict>
 			<key>$class</key>
@@ -9631,7 +9631,7 @@
 				<integer>738</integer>
 			</dict>
 			<key>NS.time</key>
-			<real>331705455.07634598</real>
+			<real>331711802.93971902</real>
 		</dict>
 		<dict>
 			<key>$classes</key>
@@ -9642,7 +9642,7 @@
 			<key>$classname</key>
 			<string>NSDate</string>
 		</dict>
-		<string>Today at 12:24 AM</string>
+		<string>Today at 2:10 AM</string>
 		<integer>106</integer>
 		<string>urMus</string>
 		<dict>

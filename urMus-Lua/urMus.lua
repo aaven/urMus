@@ -17,6 +17,7 @@ local ceil = math.ceil
 patchdir = "Patches"
 
 pagefile = {
+"urStick.lua",
 "urMus",
 "urDrawDemo1.lua",
 "urTurn.lua",
@@ -80,7 +81,6 @@ pagefile = {
 --"urAir.lua",
 --"urWater.lua",
 --"urFire.lua",
-"urTest.lua",
 "urMenu.lua",
 }
 

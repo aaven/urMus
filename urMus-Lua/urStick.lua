@@ -8,6 +8,7 @@ MAX_NUM_MENU_OPT = 20
 HEIGHT_MENU_OPT = 30
 NUM_MENU_OPTION = 7 -- MenuCancel is not needed anymore
 INDEX_STICK_MENU = 5
+STICK_MARGIN = 20
 
 FreeAllRegions()
 
@@ -47,7 +48,8 @@ function CreateorRecycleregion(ftype, name, parent)
     region.stickee = {} -- store the ids of objects that sticks to it
     region.sticker = -1 -- store the ids of objects it sticks to
     
-    DPrint("R#"..region.id.." created")
+    x,y = InputPosition()
+    DPrint("R#"..region.id.." created, centered at "..x.." "..y)
     return region
 end
 
@@ -369,10 +371,10 @@ end
 
 function AnchorMenu(menu)
 	if menu.position[1] == "right" then
-		DPrint("menu to the right")
+		--DPrint("menu to the right")
 		menu[1]:SetAnchor("TOPLEFT",menu.caller,"TOPRIGHT",0,menu.position[2])
 	else 
-		DPrint("menu to the left")
+		--DPrint("menu to the left")
 		menu[1]:SetAnchor("TOPRIGHT",menu.caller,"TOPLEFT",0,menu.position[2])
 	end
 end
@@ -459,6 +461,82 @@ function UpdateMenuPosition(self)
 	AnchorMenu(self.menu)
 end
 
+SixteenPositions = {} -- SixteenPositions[p1][p2]: ee:SetAnchor(p2,er,p1)
+function InitializeUrStick() -- 
+	local k = 1
+	for i = 1,4 do
+		SixteenPositions[i] = {}
+	end
+	SixteenPositions[1][4] = {"TOPLEFT","BOTTOMRIGHT"}
+	SixteenPositions[2][4] = {"TOPLEFT","BOTTOMLEFT"}
+	SixteenPositions[3][4] = {"TOPRIGHT","BOTTOMRIGHT"}
+	SixteenPositions[4][4] = {"TOPRIGHT","BOTTOMLEFT"}
+	SixteenPositions[1][3] = {"TOPLEFT","TOPRIGHT"}
+	SixteenPositions[2][3] = {"TOPLEFT","TOPLEFT"}
+	SixteenPositions[3][3] = {"TOPRIGHT","TOPRIGHT"}
+	SixteenPositions[4][3] = {"TOPRIGHT","TOPLEFT"}
+	SixteenPositions[1][2] = {"BOTTOMLEFT","BOTTOMRIGHT"}
+	SixteenPositions[2][2] = {"BOTTOMLEFT","BOTTOMLEFT"}
+	SixteenPositions[3][2] = {"BOTTOMRIGHT","BOTTOMRIGHT"}
+	SixteenPositions[4][2] = {"BOTTOMRIGHT","BOTTOMLEFT"}
+	SixteenPositions[1][1] = {"BOTTOMLEFT","TOPRIGHT"}
+	SixteenPositions[2][1] = {"BOTTOMLEFT","TOPLEFT"}
+	SixteenPositions[3][1] = {"BOTTOMRIGHT","TOPRIGHT"}
+	SixteenPositions[4][1] = {"BOTTOMRIGHT","TOPLEFT"}
+end
+
+InitializeUrStick()
+
+function StickToClosestAnchorPoint(ee,er)
+	local hw = er:Width()/2
+	local hh = er:Height()/2
+	local eex,eey = ee:Center()
+	local erx = er:Left()
+	local ery = er:Bottom()
+	local dx = math.ceil((eex - erx)/hw) + 1
+	local dy = math.ceil((eey - ery)/hh) + 1
+	if dx > 4 then dx = 4 end
+	if dx < 1 then dx = 1 end
+	if dy > 4 then dy = 4 end
+	if dy < 1 then dy = 1 end
+
+	ee:SetAnchor(SixteenPositions[dx][dy][2],er,SixteenPositions[dx][dy][1])
+	table.insert(er.stickee,ee.id)
+    ee.sticker = er.id
+    ee:EnableMoving(false)
+
+	output = SixteenPositions[dx][dy][1].."+"..SixteenPositions[dx][dy][2].." new stickee R#"..ee.id.."! sticker R#"..sticker.." now has stickees: "
+    for k,i in pairs(er.stickee) do
+        output = output.." R#"..i
+    end
+    DPrint(output)
+end
+
+function AutoCheckStick(self)
+	DPrint("in AutoCheckStick")
+	local large = Region()
+	local x = self:Left() - STICK_MARGIN
+	local y = self:Top() + STICK_MARGIN
+	large:SetWidth(self:Width() + STICK_MARGIN * 2)
+	large:SetHeight(self:Height() + STICK_MARGIN * 2)
+	large:SetAnchor("TOPLEFT",x,y)
+	
+	for k,v in pairs (regions) do -- v is sticker, self is stickee
+		if v ~= self and v.usable == 1 then
+			DPrint("there are other regions")
+			if v.sticker ~= self.id and self.sticker ~= v.id then
+				DPrint("there are other regions to stick to")
+				if v:RegionOverlap(large) then
+					DPrint("they overlap")
+					if	not v:RegionOverlap(self) then
+						StickToClosestAnchorPoint(self,v)
+					end
+				end
+			end
+		end
+	end
+end
+
 function TouchDown(self)
     checkOpenMenu(0)
     
@@ -478,6 +556,7 @@ function TouchDown(self)
     region:Handle("OnDragStart",StartMove)
     region:Handle("OnDragStop",StopMove)
     region:Handle("OnTouchUp",UpdateMenuPosition)
+    region:Handle("OnTouchUp",AutoCheckStick)
 end
 
 function TouchUp(self)

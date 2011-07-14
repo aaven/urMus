@@ -42,6 +42,8 @@ function CreateorRecycleregion(ftype, name, parent)
     end
     
     region.t:SetTexture(255,255,255,255)
+    region:SetWidth(200)
+    region:SetHeight(200)
     region:Show()
     region:EnableMoving(true)
     region:EnableResizing(true)
@@ -127,6 +129,7 @@ function SetDefaultRegion(r)
     r.sticker = -1
     r.stickee = {}
     r.menu.open = 0
+    r.usable = 0
 end
 
 function MenuRecycleSelf(self) -- remove object    
@@ -141,7 +144,7 @@ function MenuRecycleSelf(self) -- remove object
     table.insert(recycledregions, self.parent.caller)
     for k,v in pairs(regions) do
         if v == self.parent.caller then
-            regions[k].usable = 0
+       --     regions[k].usable = 0
         end
     end
     
@@ -557,7 +560,7 @@ function TouchDown(self)
     local region = CreateorRecycleregion('region', 'backdrop', UIParent)
     local x,y = InputPosition()
     region:SetAnchor("CENTER",x,y)
-    txt[1] = "R#"..region.id.." "..txt[1]
+    txt[1] = "R#"..region.id.." About"
     region.menu = Menu.Create(region,"Sequence 01026.png",txt,tap,NUM_MENU_OPTION,"right",0,0)
     -- child menu for Stick
     
@@ -661,13 +664,8 @@ function DeTrigger(self)
        self:Handle("OnUpdate",nil)
 end
 
-r=Region()
-r.t = r:Texture()
-r.t:SetTexture(255,255,255,255)
-r:EnableInput(true)
-r:Show()
-r:Handle("OnTouchDown",HoldTrigger)
-r:Handle("OnTouchUp", DeTrigger)
+space:Handle("OnTouchDown",HoldTrigger)
+space:Handle("OnTouchUp", DeTrigger)
 
 ------------------------------------------------------------------
 pagebutton=Region('region', 'pagebutton', UIParent);

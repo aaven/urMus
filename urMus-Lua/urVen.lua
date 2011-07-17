@@ -411,6 +411,51 @@ function setAnchorCancel(self)
     sticky = 0
 end
 
+------------ notification component set --------------
+------------ add ShowNotification(note) to wanted event --------------
+function FadeNotification(self, elapsed)
+    if self.staytime > 0 then
+        self.staytime = self.staytime - elapsed
+        return
+    end
+    if self.fadetime > 0 then
+        self.fadetime = self.fadetime - elapsed
+        self.alpha = self.alpha - self.alphaslope * elapsed
+        self:SetAlpha(self.alpha)
+    else
+        self:Hide()
+        self:Handle("OnUpdate", nil)
+    end
+end
+
+function ShowNotification(note)
+    notificationregion.textlabel:SetLabel(note)
+    notificationregion.staytime = 1.5
+    notificationregion.fadetime = 2.0
+    notificationregion.alpha = 1
+    notificationregion.alphaslope = 2
+    notificationregion:Handle("OnUpdate", FadeNotification)
+    notificationregion:SetAlpha(1.0)
+    notificationregion:Show()
+end
+
+notificationregion=Region('region', 'notificationregion', UIParent)
+notificationregion:SetWidth(ScreenWidth())
+notificationregion:SetHeight(48*2)
+notificationregion:SetLayer("TOOLTIP")
+notificationregion:SetAnchor('BOTTOMLEFT',0,ScreenHeight()/2-24) 
+notificationregion:EnableClamping(true)
+notificationregion:Show()
+notificationregion.textlabel=notificationregion:TextLabel()
+notificationregion.textlabel:SetFont("Trebuchet MS")
+notificationregion.textlabel:SetHorizontalAlign("CENTER")
+notificationregion.textlabel:SetLabel("")
+notificationregion.textlabel:SetFontHeight(48)
+notificationregion.textlabel:SetColor(255,255,255,190)
+
+------------ typing component set --------------
+
+
 ------------- event functions for V --------------
 function checkOpenMenu(id)
     if menu_opened ~= 0 then
@@ -742,4 +787,4 @@ pagebutton.texture:SetGradientColor("BOTTOM",255,255,255,255,255,255,255,255);
 pagebutton.texture:SetBlendMode("BLEND")
 pagebutton.texture:SetTexCoord(0,1.0,0,1.0);
 pagebutton:EnableInput(true);
-pagebutton:Show();​
+pagebutton:Show();

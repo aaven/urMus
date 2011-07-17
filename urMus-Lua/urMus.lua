@@ -17,7 +17,10 @@ local ceil = math.ceil
 patchdir = "Patches"
 
 pagefile = {
+"urTyping.lua",
+"urVen.lua",
 "urStick.lua",
+"urMenu.lua",
 "urMus",
 "urDrawDemo1.lua",
 "urTurn.lua",
@@ -81,7 +84,6 @@ pagefile = {
 --"urAir.lua",
 --"urWater.lua",
 --"urFire.lua",
-"urMenu.lua",
 }
 
 if SoarEnabled() then

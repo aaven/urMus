@@ -490,6 +490,9 @@
 		77FB9277111BA8C30078AAC5 /* SandwichEventManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 77FB9272111BA8C30078AAC5 /* SandwichEventManager.m */; };
 		FE58BD6A13A16F1E0099D16E /* urMenu.lua in Resources */ = {isa = PBXBuildFile; fileRef = FE58BD6913A16F1E0099D16E /* urMenu.lua */; };
 		FE9BD29713BBA2F30045363E /* urStick.lua in Resources */ = {isa = PBXBuildFile; fileRef = FE9BD29613BBA2F30045363E /* urStick.lua */; };
+		FEAF5E8313CEB881009EC13E /* urVen.lua in Resources */ = {isa = PBXBuildFile; fileRef = FEAF5E8213CEB881009EC13E /* urVen.lua */; };
+		FEF0364213D151CF00834F2D /* urTyping.lua in Resources */ = {isa = PBXBuildFile; fileRef = FEF0364113D151CF00834F2D /* urTyping.lua */; };
+		FEF0364413D1535000834F2D /* test.lua in Resources */ = {isa = PBXBuildFile; fileRef = FEF0364313D1535000834F2D /* test.lua */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -1089,6 +1092,9 @@
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		FE58BD6913A16F1E0099D16E /* urMenu.lua */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = urMenu.lua; path = "urMus-Lua/urMenu.lua"; sourceTree = "<group>"; };
 		FE9BD29613BBA2F30045363E /* urStick.lua */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = urStick.lua; path = "urMus-Lua/urStick.lua"; sourceTree = "<group>"; };
+		FEAF5E8213CEB881009EC13E /* urVen.lua */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = urVen.lua; path = "urMus-Lua/urVen.lua"; sourceTree = "<group>"; };
+		FEF0364113D151CF00834F2D /* urTyping.lua */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = urTyping.lua; path = "urMus-Lua/urTyping.lua"; sourceTree = "<group>"; };
+		FEF0364313D1535000834F2D /* test.lua */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = test.lua; path = "urMus-Lua/test.lua"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1663,6 +1669,9 @@
 		77B9FC5C1194AEF9006D5007 /* urMus-lua */ = {
 			isa = PBXGroup;
 			children = (
+				FEF0364313D1535000834F2D /* test.lua */,
+				FEF0364113D151CF00834F2D /* urTyping.lua */,
+				FEAF5E8213CEB881009EC13E /* urVen.lua */,
 				FE9BD29613BBA2F30045363E /* urStick.lua */,
 				FE58BD6913A16F1E0099D16E /* urMenu.lua */,
 				77B9FC6C1194AF12006D5007 /* urMus.lua */,
@@ -2255,6 +2264,9 @@
 				77200C1913995A6400954C41 /* MerryGo.wav in Resources */,
 				FE58BD6A13A16F1E0099D16E /* urMenu.lua in Resources */,
 				FE9BD29713BBA2F30045363E /* urStick.lua in Resources */,
+				FEAF5E8313CEB881009EC13E /* urVen.lua in Resources */,
+				FEF0364213D151CF00834F2D /* urTyping.lua in Resources */,
+				FEF0364413D1535000834F2D /* test.lua in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

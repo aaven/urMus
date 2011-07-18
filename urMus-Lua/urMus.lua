@@ -17,6 +17,9 @@ local ceil = math.ceil
 patchdir = "Patches"
 
 pagefile = {
+"urBouncingBar.lua",
+"urBouncingBall.lua",
+"urMoving.lua",
 "urTyping.lua",
 "urVen.lua",
 "urStick.lua",

@@ -4,6 +4,28 @@
 FreeAllRegions()
 DPrint("welcome to urTyping")
 
+-----------------------backdrop-------------------------
+function TouchDown(self)
+  --  DPrint("touchdown")
+  --  OpenOrCloseKeyboard()
+end
+
+function TouchUp(self)
+--    DPrint("MU")
+end
+
+function DoubleTap(self)
+--      DPrint("DT")
+end
+
+function Enter(self)
+--    DPrint("EN")
+end
+
+function Leave(self)
+--    DPrint("LV")
+end​
+
 backdrop = Region('region', 'backdrop', UIParent)
 backdrop:SetWidth(ScreenWidth())
 backdrop:SetHeight(ScreenHeight())
@@ -203,24 +225,3 @@ function show(self)
     DPrint("UP")
 end
 
-------------------------------------------------
-function TouchDown(self)
-  --  DPrint("touchdown")
-  --  OpenOrCloseKeyboard()
-end
-
-function TouchUp(self)
---    DPrint("MU")
-end
-
-function DoubleTap(self)
---      DPrint("DT")
-end
-
-function Enter(self)
---    DPrint("EN")
-end
-
-function Leave(self)
---    DPrint("LV")
-end​

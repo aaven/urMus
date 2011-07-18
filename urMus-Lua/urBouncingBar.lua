@@ -5,11 +5,17 @@ FreeAllRegions()
 DPrint("welcome to urMoving")
 
 -------- user inputs ---------
+ball_size = 30
+player_w = 300
+player_h = 30
 speed = 10 -- 3 to 10, slow to fast
 dir = math.pi/4 -- degree
 bounding_list = {} -- bounding objects
-boundary = {0,ScreenHeight(),0,ScreenWidth()} -- boundaries {minx,maxx,miny,maxy}
+pboundary = {0,ScreenHeight(),0,ScreenWidth()} -- boundaries {miny,maxy,minx,maxx}
+boundary = {pboundary[1]+player_h,pboundary[2]-player_h,pboundary[3]+player_h,pboundary[4]-player_h}
+no_boundary = {0,ScreenHeight(),0,ScreenWidth()}
 signal = "OnTouchDown" -- start/stop signal
+
 
 ------------------------------------------------------------------
 pagebutton=Region('region', 'pagebutton', UIParent);
@@ -68,18 +74,15 @@ function StartMoving(r,e)
     elseif r.touch == "left" then
         r.dx = math.abs(r.dx)
     else
-        if r:Bottom() <= r.bound[1] then
-        DPrint("none bottom")
-            r.dy = math.abs(r.dy)
-        elseif r:Left() <= r.bound[3] then
-        DPrint("none left")
-            r.dx = math.abs(r.dx)
-        elseif r:Top() >= r.bound[2] then
-        DPrint("none top")
-            r.dy = -math.abs(r.dy)
-        elseif r:Right() >= r.bound[4] then
-        DPrint("none right")
-            r.dx = -math.abs(r.dx)
+        if r:Bottom() <= r.bound[1] or r:Left() <= r.bound[3] or r:Top() >= r.bound[2] or r:Right() >= r.bound[4] then
+            DPrint("Sorry =( You lose!")
+               r:Handle("OnUpdate",nil)
+               r.backdrop:Handle("OnMove",nil)
+            r.moving = 0
+            r.list[1]:EnableMoving(false)
+            r.list[2]:EnableMoving(false)
+            r.list[3]:EnableMoving(false)
+            r.list[4]:EnableMoving(false)
         end
     end
 end
@@ -96,29 +99,76 @@ function StartOrStopMoving(self)
     end
 end
 
-
+function UpdatePlayer(self,x,y,dx,dy)
+    if x < pboundary[3] + player_w/2 then
+        self.p[3]:SetAnchor("BOTTOMLEFT",pboundary[3],pboundary[1])
+        self.p[4]:SetAnchor("TOPLEFT",pboundary[3],pboundary[2])
+    elseif x > pboundary[4] - player_w/2 then
+        self.p[3]:SetAnchor("BOTTOMRIGHT",pboundary[4],pboundary[1])
+        self.p[4]:SetAnchor("TOPRIGHT",pboundary[4],pboundary[2])
+    else
+        self.p[3]:SetAnchor("BOTTOM",x,pboundary[1])
+        self.p[4]:SetAnchor("TOP",x,pboundary[2])
+    end
+    
+    if y < pboundary[1] + player_w/2 then
+        self.p[1]:SetAnchor("BOTTOMLEFT",pboundary[3],pboundary[1])
+        self.p[2]:SetAnchor("BOTTOMRIGHT",pboundary[4],pboundary[1])
+    elseif y > pboundary[2] - player_w/2 then
+        self.p[1]:SetAnchor("TOPLEFT",pboundary[3],pboundary[2])
+        self.p[2]:SetAnchor("TOPRIGHT",pboundary[4],pboundary[2])
+    else
+        self.p[1]:SetAnchor("LEFT",pboundary[3],y)
+        self.p[2]:SetAnchor("RIGHT",pboundary[4],y)
+    end
+end
 ------------------------------------------------
+    
 function TouchDown(self)
   --  DPrint("touchdown")
     x,y = InputPosition()
     
     p1 = Region('region','red',UIParent)
     p1.t = p1:Texture(255,0,0,255)
-    p1:SetWidth(30)
-    p1:SetHeight(300)
-    p1:SetAnchor("RIGHT",ScreenWidth(),ScreenHeight()/2)
+    p1:SetWidth(player_h)
+    p1:SetHeight(player_w)
+    p1:SetAnchor("LEFT",pboundary[3],(pboundary[2]+pboundary[1])/2)
     p1:EnableInput(true)
-    p1:EnableMoving(true)
-    --p1:Show()
+  --  p1:EnableMoving(true)
+    p1:Show()
     
-    p2 = Region('region','blue',UIParent)
-    p2.t = p2:Texture(0,0,255,255)
-    p2:SetWidth(30)
-    p2:SetHeight(300)
-    p2:SetAnchor("LEFT",0,ScreenHeight()/2)
+    p2 = Region('region','red',UIParent)
+    p2.t = p2:Texture(255,0,0,255)
+    p2:SetWidth(player_h)
+    p2:SetHeight(player_w)
+    p2:SetAnchor("RIGHT",pboundary[4],(pboundary[2]+pboundary[1])/2)
     p2:EnableInput(true)
-    p2:EnableMoving(true)
-    --p2:Show()
+  --  p2:EnableMoving(true)
+    p2:Show()
+    
+    p3 = Region('region','blue',UIParent)
+    p3.t = p3:Texture(0,0,255,255)
+    p3:SetWidth(player_w)
+    p3:SetHeight(player_h)
+    p3:SetAnchor("TOP",(pboundary[3]+pboundary[4])/2,pboundary[2])
+   -- p3:EnableInput(true)
+    p3:EnableMoving(true)
+    p3:Show()
+    
+    p4 = Region('region','blue',UIParent)
+    p4.t = p4:Texture(0,0,255,255)
+    p4:SetWidth(player_w)
+    p4:SetHeight(player_h)
+    p4:SetAnchor("BOTTOM",(pboundary[3]+pboundary[4])/2,pboundary[1])
+   -- p4:EnableInput(true)
+    p4:EnableMoving(true)
+    p4:Show()
+    
+    self.p = {p1,p2,p3,p4}
+    table.insert(bounding_list,1,p1)
+    table.insert(bounding_list,2,p2)
+    table.insert(bounding_list,3,p3)
+    table.insert(bounding_list,4,p4)
     
     region = Region()
     region.t = region:Texture(255,255,255,255)
@@ -135,12 +185,15 @@ function TouchDown(self)
     region.x=x
     region.y=y
     region.list = bounding_list
-    region.bound = boundary 
+    region.bound = no_boundary 
     region.moving = 0
+    region.backdrop = self
     
-    region:Handle(signal,StartOrStopMoving)
+    --region:Handle(signal,StartOrStopMoving)
+    StartOrStopMoving(region)
     
     self:Handle("OnTouchDown",nil)
+    self:Handle("OnMove",UpdatePlayer)
 end
 
 function TouchUp(self)

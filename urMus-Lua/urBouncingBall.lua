@@ -1,15 +1,23 @@
--- urMoving.lua
+-- urBouncingBall.lua
 -- by Aaven, Jul 2011
 
 FreeAllRegions()
 DPrint("welcome to urMoving")
 
 -------- user inputs ---------
+size_ball = 30
 speed = 10 -- 3 to 10, slow to fast
 dir = math.pi/4 -- degree
 bounding_list = {} -- bounding objects
-boundary = {0,ScreenHeight(),0,ScreenWidth()} -- boundaries {minx,maxx,miny,maxy}
+boundary = {0,ScreenHeight(),0,ScreenWidth()} -- boundaries {miny,maxy,minx,maxx}
+bouncing_ball_boundary = {-10000,ScreenHeight(),0,ScreenWidth()}
+
 signal = "OnTouchDown" -- start/stop signal
+
+row = 10
+col = 8
+w = ScreenWidth()/col
+h = w*0.3
 
 ------------------------------------------------------------------
 pagebutton=Region('region', 'pagebutton', UIParent);
@@ -42,34 +50,52 @@ function TouchEdge(r,other)
         DPrint("right"..other:Name())
         r.touch = "right"
     else
+        DPrint("this is impossible")
         r.touch = "none"
     end
 end
 
 function StartMoving(r,e)
-    r.x = r.x + r.dx
-    r.y = r.y + r.dy
-    r:SetAnchor("CENTER",r.x,r.y)
-    
     r.touch = "none"
     for k,v in pairs (r.list) do
         if r:RegionOverlap(v) then
             TouchEdge(r,v)
+            
+            if r.touch == "top" then
+                r.dy = -math.abs(r.dy)
+            elseif r.touch == "right" then
+                r.dx = -math.abs(r.dx)
+            elseif r.touch == "bottom" then
+                r.dy = math.abs(r.dy)
+            elseif r.touch == "left" then
+                r.dx = math.abs(r.dx)
+            end
+            
+            if v ~= r.list[1] then 
+                v:Hide()
+                table.remove(r.list,k)
+                
+                if #r.list == 1 then
+                    DPrint("Congrats! You Win!")
+                    r:Handle("OnUpdate",nil)
+                    r.moving = 0
+                    r.list[1]:EnableMoving(false)
+                end
+            end
             break
         end
     end
     
-    if r.touch == "top" then
-        r.dy = -math.abs(r.dy)
-    elseif r.touch == "right" then
-        r.dx = -math.abs(r.dx)
-    elseif r.touch == "bottom" then
-        r.dy = math.abs(r.dy)
-    elseif r.touch == "left" then
-        r.dx = math.abs(r.dx)
-    else
-        if r:Bottom() <= r.bound[1] then
-        DPrint("none bottom")
+    
+    if r.touch == "none" then
+        if r:Bottom() <= 0 then
+            DPrint("Sorry =( You lose!")
+            r:Handle("OnUpdate",nil)
+            r.backdrop:Handle("OnMove",nil)
+            r.moving = 0
+            r.list[1]:EnableMoving(false)
+        elseif r:Bottom() <= r.bound[1] then
+            DPrint("none bottom"..r.bound[1])
             r.dy = math.abs(r.dy)
         elseif r:Left() <= r.bound[3] then
         DPrint("none left")
@@ -82,27 +108,88 @@ function StartMoving(r,e)
             r.dx = -math.abs(r.dx)
         end
     end
+    
+    r.x = r.x + r.dx
+    r.y = r.y + r.dy
+    r:SetAnchor("CENTER",r.x,r.y)
 end
 
 function StartOrStopMoving(self)
     self:Handle("OnUpdate",nil)
     if self.moving == 1 then
         self.moving = 0
-        DPrint("stop")
+        --DPrint("stop")
     else
         self.moving = 1
-        DPrint("start")
+        --DPrint("start")
         self:Handle("OnUpdate",StartMoving)
     end
 end
 
+function CreateTile(x,y)
+    local r = Region('region','tile',UIParent)
+    r.t = r:Texture(0,0,0,255)
+    r:SetWidth(w)
+    r:SetHeight(h)
+    r:SetAnchor("TOPLEFT",x,y)
+    
+    local r1 = Region('region','tile',UIParent)
+    r1.t = r1:Texture(0,255,0,255)
+    r1:SetWidth(w-4)
+    r1:SetHeight(h-3)
+    r1:SetAnchor("CENTER",r,"CENTER")
+    r1:Show()
+    
+    r:Show()
+    
+    return r
+end
+
+function CreateTiles(bounding_list)
+    list = {}
+    r1 = math.ceil(row/2)-1
+    r2 = math.floor(row/2)-1
+    c1 = col-1
+    c2 = col-2
+    for i = 0,r1 do
+        list[i*2+1] = {}
+        for j = 0,c1 do
+            local tile = CreateTile(w*j,ScreenHeight()-h*2*i)
+            list[i*2+1][j] = tile
+            table.insert(bounding_list,tile)
+        end
+    end
+    
+    for i = 0,r2 do
+        list[i*2+2] = {}
+        for j = 0,c2 do
+            local tile = CreateTile(w*j+w/2,ScreenHeight()-h*2*i-h)
+            list[i*2+2][j] = tile
+            table.insert(bounding_list,tile)
+        end
+    end
+    
+    return list
+end
+
+function MovePlayer(self, x, y, dx, dy)
+    if x < self.p:Width()/2 then
+        self.p:SetAnchor("BOTTOMLEFT",0,0)
+    elseif  x > ScreenWidth()-self.p:Width()/2 then
+        self.p:SetAnchor("BOTTOMRIGHT",ScreenWidth(),0)
+    else
+        self.p:SetAnchor("BOTTOM",x,0)
+    end
+end
 
 ------------------------------------------------
 function TouchDown(self)
   --  DPrint("touchdown")
-    x,y = InputPosition()
+    local x,y = InputPosition()
     
-    p1 = Region('region','red',UIParent)
+    CreateTiles(bounding_list)
+    
+    local p1 = Region('region','red',UIParent)
     p1.t = p1:Texture(255,0,0,255)
     p1:SetWidth(30)
     p1:SetHeight(300)
@@ -111,7 +198,7 @@ function TouchDown(self)
     p1:EnableMoving(true)
     --p1:Show()
     
-    p2 = Region('region','blue',UIParent)
+    local p2 = Region('region','blue',UIParent)
     p2.t = p2:Texture(0,0,255,255)
     p2:SetWidth(30)
     p2:SetHeight(300)
@@ -119,11 +206,22 @@ function TouchDown(self)
     p2:EnableInput(true)
     p2:EnableMoving(true)
     --p2:Show()
+        
+    local p = Region('region','player',UIParent)
+    p.t = p:Texture(200,0,150,255)
+    p:SetWidth(300)
+    p:SetHeight(30)
+    p:SetAnchor("BOTTOM",ScreenWidth()/2,0)
+    --p:EnableInput(true)
+    p:EnableMoving(true)
+    p:Show()
+    table.insert(bounding_list,1,p)
+    self.p = p
     
-    region = Region()
+    local region = Region()
     region.t = region:Texture(255,255,255,255)
-    region:SetWidth(50)
-    region:SetHeight(50)
+    region:SetWidth(size_ball)
+    region:SetHeight(size_ball)
     region:SetAnchor("CENTER",x,y)
     region:EnableInput(true)
     region:Show()
@@ -134,13 +232,16 @@ function TouchDown(self)
 --    x,y = region:Center()
     region.x=x
     region.y=y
-    region.list = bounding_list
-    region.bound = boundary 
+    region.list = bounding_list -- {p1,p2}
+    region.bound = bouncing_ball_boundary -- boundary 
     region.moving = 0
+    region.backdrop = self
     
-    region:Handle(signal,StartOrStopMoving)
+    -- region:Handle(signal,StartOrStopMoving)
+    StartOrStopMoving(region)
     
     self:Handle("OnTouchDown",nil)
+    self:Handle("OnMove",MovePlayer)
 end
 
 function TouchUp(self)

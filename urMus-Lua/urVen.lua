@@ -762,7 +762,7 @@ function HoldToTrigger(self, elapsed)
 end
 
 function HoldTrigger(self)
-       self.holdtime = 3
+       self.holdtime = 1
        self:Handle("OnUpdate", HoldToTrigger)
 end
 

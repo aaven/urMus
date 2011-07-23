@@ -90,6 +90,7 @@ function StartOrStopMoving(self)
         self.moving = 0
         DPrint("stop")
     else
+    	self.x,self.y = self:Center()
         self.moving = 1
         DPrint("start")
         self:Handle("OnUpdate",StartMoving)
@@ -131,9 +132,6 @@ function TouchDown(self)
     region.dx = math.tan(dir)
     region.dy = speed/region.dx 
     region.dx = speed*region.dx
---    x,y = region:Center()
-    region.x=x
-    region.y=y
     region.list = bounding_list
     region.bound = boundary 
     region.moving = 0

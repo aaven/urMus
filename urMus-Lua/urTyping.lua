@@ -24,7 +24,7 @@ end
 
 function Leave(self)
 --    DPrint("LV")
-end​
+end
 
 backdrop = Region('region', 'backdrop', UIParent)
 backdrop:SetWidth(ScreenWidth())

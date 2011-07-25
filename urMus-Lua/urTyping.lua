@@ -134,6 +134,10 @@ function KeyTouchDownBack(self)
     end
 end
 
+function KeyTouchDownClear(self)
+    self.parent.typingarea.tl:SetLabel("")
+end
+
 function Keyboard.Create(area)
     local kb = {}
     setmetatable(kb, Keyboard)
@@ -153,12 +157,15 @@ function Keyboard.Create(area)
     kb[4] = {}
     kb[4].num = 3
     kb[4][1] = kb:CreateKey("123","123","abc",key_w*2)
-    kb[4][2] = kb:CreateKey(" "," "," ",key_w*6)
-    kb[4][3] = kb:CreateKey("<=","<=","<=",key_w*2.5)
+    kb[4][2] = kb:CreateKey(" "," "," ",key_w*5.5)
+    kb[4][3] = kb:CreateKey("<=","<=","<=",key_w*2.2)
+    kb[4][4] = kb:CreateKey("clear","clear","clear",key_w*0.7)
     kb[4][2]:SetAnchor("TOPLEFT",kb[4][1],"TOPRIGHT",key_margin,0)
     kb[4][3]:SetAnchor("TOPLEFT",kb[4][2],"TOPRIGHT",key_margin,0)
+    kb[4][4]:SetAnchor("TOPLEFT",kb[4][3],"TOPRIGHT",key_margin,0)
     kb[4][1]:Handle("OnTouchDown",KeyTouchDownFlip)
     kb[4][3]:Handle("OnTouchDown",KeyTouchDownBack)
+    kb[4][4]:Handle("OnTouchDown",KeyTouchDownClear)
     
     kb[4][1]:SetAnchor("BOTTOMLEFT",key_margin,key_margin)
     kb[3][1]:SetAnchor("BOTTOMLEFT",kb[4][1],"TOPLEFT",0,key_margin)
@@ -181,7 +188,7 @@ end
 function Keyboard:Hide()
     for i = 1,4 do
         for j = 1,#self[i] do
-            self[i][j]:EnableInput(true)
+            self[i][j]:EnableInput(false)
             self.face = 1
             self[i][j].tl:SetLabel(self[i][j].faces[1])
             self[i][j]:Hide()
@@ -210,7 +217,7 @@ mykb = Keyboard.Create()
 
 function OpenOrCloseKeyboard(self)
     if mykb.open == 0 then 
-        self.tl:SetLabel("")
+        -- self.tl:SetLabel("")
         self.tl:SetHorizontalAlign("LEFT")
         mykb.typingarea = self
         DPrint("to open")
@@ -225,3 +232,4 @@ function show(self)
     DPrint("UP")
 end
 
+​

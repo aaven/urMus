@@ -230,6 +230,4 @@ end
 
 function show(self)
     DPrint("UP")
-end
-
-​
+end​

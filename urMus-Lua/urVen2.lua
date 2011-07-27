@@ -45,7 +45,7 @@ function InitializeUrStick()
 end
 InitializeUrStick()
 
-------------------- events --------------------
+------------------- menubar  --------------------
 function CloseMenuBar()
     if menubar.show == 1 then
         for i = 1,#menubar do
@@ -53,6 +53,7 @@ function CloseMenuBar()
             menubar[i]:EnableInput(false)
         end
         menubar.show = 0
+        backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
     end
 end
 
@@ -72,11 +73,13 @@ function OpenGlobalMenu(self)
         for i = 1,#menubar do
             menubar[i]:Show()
             menubar[i]:EnableInput(true)
+            menubar[i]:MoveToTop()
         end
         menubar.v = self
         menubar.show = 1
         CloseColorWheel(self)
         mykb:Hide()
+        backdrop:SetClipRegion(0,HEIGHT_MENU_OPT,ScreenWidth(),ScreenHeight())
     end
 end
 
@@ -92,6 +95,9 @@ end
 
 function OpenOrCloseMenubarItem(self) -- call by menubar(i) TODO TODO TODO
     if self.menu.open == 0 then
+        if menubar.openmenu ~= -1 then
+            menubar[menubar.openmenu].menu:CloseMenu()
+        end
         DPrint("open menu item")
         menubar.openmenu = self.k
         self.menu:OpenMenu()
@@ -102,35 +108,72 @@ function OpenOrCloseMenubarItem(self) -- call by menubar(i) TODO TODO TODO
     end
 end
 
+trashbin = Region('region','trashbin',UIParent)
+trashbin.t = trashbin:Texture("trashbin.png")
+trashbin:SetWidth(100)
+trashbin:SetHeight(100)
+trashbin:SetAnchor("TOP",UIParent,"TOP")
+trashbin.yes = 0
+
+function OverlapTrashbin(self)
+    if self:RegionOverlap(trashbin) then
+        DPrint("Do you want to remove "..self:Name().."?")
+        self.t:SetTexture(255,0,0,250)
+        trashbin.yes = 1
+    else
+        DPrint("you can move to the trashbin to remove the object")
+        VSetTexture(self)
+        trashbin.yes = 0
+    end
+end
+
+function MoveToTrashbin(v)
+    Unstick(v)
+    
+    PlainVRegion(v)
+    v:EnableInput(false)
+    v:EnableMoving(false)
+    v:EnableResizing(false)
+    v:Hide()
+    v.usable = 0
+
+    table.insert(recycledregions, v.id)
+    DPrint(v:Name().." removed")
+end
 
 function HoldToTrigger(self, elapsed)
-    self.holdtime = self.holdtime - elapsed
     x,y = self:Center()
-    if self.x ~= x or self.y ~= y then
-        self:Handle("OnUpdate",nil)
-    else
+    
+    if self.holdtime <= 0 then
         self.x = x 
         self.y = y
-        if self.holdtime <= 0 then
-            DPrint("Menu Opened")
-            OpenGlobalMenu(self)
+        DPrint("Menu Opened")
+        OpenGlobalMenu(self)
+        trashbin:Show()
+        self:Handle("OnUpdate",OverlapTrashbin)
+    else 
+        if math.abs(self.x - x) > 10 or math.abs(self.y - y) > 10 then
+            self:Handle("OnUpdate",nil)
         end
+        self.holdtime = self.holdtime - elapsed
     end
 end
 
 function HoldTrigger(self)
-    self.holdtime = 1
+    self.holdtime = 0.8
     self.x,self.y = self:Center()
     self:Handle("OnUpdate",HoldToTrigger)
 end
 
 function DeTrigger(self)
     self:Handle("OnUpdate",nil)
+    if trashbin.yes == 1 then
+        MoveToTrashbin(self)
+        trashbin.yes = 0
+    end
+    trashbin:Hide()
 end
 
-default_touchup_list = {DeTrigger} -- AutoCheckStick can only exist at the first position
-
-    
 -- anchor option
 anchorv = Region('region','anchor',UIParent)
 anchorv:EnableInput(true)
@@ -166,11 +209,17 @@ function AddAnchorIcon(self)
     anchorv.caller = self
 end
 
+function BeBouncedObject(self)
+    if mydialog.ready == 1 then
+        table.insert(mydialog.obj,self.id)
+    end
+end
+
 function PlainVRegion(r)
     -- initialize for events and signals
     r.eventlist = {}
     r.eventlist["OnTouchDown"] = {HoldTrigger,CloseGlobalMenu,CloseKeyboard,SelectObj,AddAnchorIcon}
-    r.eventlist["OnTouchUp"] = default_touchup_list 
+    r.eventlist["OnTouchUp"] = {AutoCheckStick,DeTrigger} 
     r.eventlist["OnDoubleTap"] = {OpenOrCloseKeyboard} -- ChangeColor
     r.eventlist["OnUpdate"] = {} -- TODO: not needed??
     r.eventlist["OnMove"] = {}
@@ -196,11 +245,16 @@ function PlainVRegion(r)
     r.dy = 0
     
     -- initialize texture, label and size
-    r.t:SetTexture(255,255,255,255)
-    r.tl:SetLabel("R#"..r.id)
+    r.r = 255
+    r.g = 255
+    r.b = 255
+    r.a = 255
+    r.t:SetTexture(r.r,r.g,r.b,r.a)
+    r.tl:SetLabel(r:Name())
     r.tl:SetFontHeight(16)
     r.tl:SetColor(0,0,0,255) 
     r.tl:SetHorizontalAlign("JUSTIFY")
+    r.tl:SetVerticalAlign("MIDDLE")
     r.tl:SetShadowColor(255,255,255,255)
     r.tl:SetShadowOffset(1,1)
     r.tl:SetShadowBlur(1)
@@ -214,7 +268,7 @@ end
 
 ------------------- VRegion ------------------
 function VRegion(ttype,name,parent,id)
-    local r = Region(ttype,name,parent)
+    local r = Region(ttype,"R#"..id,parent)
     r.tl = r:TextLabel()
     r.t = r:Texture()
     
@@ -239,141 +293,72 @@ pics = {"vinyl.png","Ornament1.png","Pirate1.png","Play.png","Right.png"}
                             
 function_list = {}
 
-function_list[1] = {"Try me",{
-                            {"about",MenuAbout,{}},
-                            {"rand pic",MenuPictureRandomly,{}},
-                            {"rand color",MenuColorRandomly,{}},
-                            {"clear bkg",MenuClearToWhite,{}},
-                            {"unstick",MenuUnstick,{}},
-                            {"remove v",MenuRecycleSelf,{}},
-                            {"autostick control",MenuStickControl,{}}
+function_list[1] = {"Try me", {
+                                {"about",MenuAbout,{}},
+                                {"rand pic",MenuPictureRandomly,{}},
+                                {"rand color",MenuColorRandomly,{}},
+                                {"clear bkg",MenuClearToWhite,{}},
+                                {"unstick",MenuUnstick,{}},
+                                {"remove v",MenuRecycleSelf,{}},
+                                {"autostick control",MenuStickControl,{}}
                             }
                     }
                     
+text_size_list = {"8","10","12","14","16","20","24","28","32","36"}
+text_position_list = {"top left","top center","top right","middle left","middle center","middle right","bottom left","bottom center","bottom right"}
+text_position_hor_list = {"LEFT","CENTER","RIGHT","LEFT","CENTER","RIGHT","LEFT","CENTER","RIGHT"}
+text_position_ver_list = {"TOP","TOP","TOP","MIDDLE","MIDDLE","MIDDLE","BOTTOM","BOTTOM","BOTTOM"}
 function_list[2] = {"Edit", {
-                            {"color wheel",MenuChangeColor,{}},
-                            {"duplicate",MenuDuplicate,{}}
+                                {"color wheel",MenuChangeColor,{}},
+                                {"duplicate",MenuDuplicate,{}},
+                                {"text position",MenuText,{
+                                                            {text_position_list[1],MenuTextPosition,{}},
+                                                            {text_position_list[2],MenuTextPosition,{}},
+                                                            {text_position_list[3],MenuTextPosition,{}},
+                                                            {text_position_list[4],MenuTextPosition,{}},
+                                                            {text_position_list[5],MenuTextPosition,{}},
+                                                            {text_position_list[6],MenuTextPosition,{}},
+                                                            {text_position_list[7],MenuTextPosition,{}},
+                                                            {text_position_list[8],MenuTextPosition,{}},
+                                                            {text_position_list[9],MenuTextPosition,{}}
+                                                        }},
+                                {"text font",MenuText,{
+                                                            {text_size_list[1],MenuTextSize,{}},
+                                                            {text_size_list[2],MenuTextSize,{}},
+                                                            {text_size_list[3],MenuTextSize,{}},
+                                                            {text_size_list[4],MenuTextSize,{}},
+                                                            {text_size_list[5],MenuTextSize,{}},
+                                                            {text_size_list[6],MenuTextSize,{}},
+                                                            {text_size_list[7],MenuTextSize,{}},
+                                                            {text_size_list[8],MenuTextSize,{}},
+                                                            {text_size_list[9],MenuTextSize,{}},
+                                                            {text_size_list[10],MenuTextSize,{}}
+                                                        }},
+                                                            
                             }
                     }
                     
+function MenuTextSize(self)
+    DPrint("change font: "..text_size_list[self.k])
+    local size = tonumber(text_size_list[self.k]) * 5/3
+    menubar.v.tl:SetFontHeight(size)
+    menubar.v.tl:SetLabel(menubar.v.tl:Label())
+end
+
+function MenuTextPosition(self)
+    menubar.v.tl:SetHorizontalAlign(text_position_hor_list[self.k])
+    menubar.v.tl:SetVerticalAlign(text_position_ver_list[self.k])
+    menubar.v.tl:SetLabel(menubar.v.tl:Label())
+end
+                  
 function_list[3] = {"Take Action!", {
-                            {"move",MenuMoving,{}}
+                                {"move",MenuMoving,{}}
                             }
                     }
-
-
------------- Menu Class -------------
-Menu = {}
-Menu.__index = Menu
-function Menu:OpenMenu() 
-    if self.open == 0 then
-        for i = 1,self.num do
-            self[i]:EnableInput(true)
-            self[i]:MoveToTop()
-            self[i]:Show()
-        end
-        self.open = 1
-    end
-end
-
-function Menu:CloseMenu() 
-    if self.open == 1 then
-        for i = 1,self.num do
-            self[i]:Hide()
-            self[i]:EnableInput(false)
-            if self[i].menu ~= {} then
-                if self[i].menu.open == 1 then
-                    self[i].menu:CloseMenu()
-                end
-            end
-        end
-        self.open = 0
-    end
-end
-
-function Menu:MoveMenuToTop() 
-    if self.open == 1 then
-        for i = 1,self.num do
-            self[i]:MoveToTop()
-            if self[i].menu ~= {} then
-                if self[i].menu.open == 1 then
-                    self[i].menu:MoveMenuToTop()
-                end
-            end
-        end
-    end
-end
-
-function Menu:CreateOption(pair)
-    local opt = Region() 
-    opt.parent = self
-    opt.menu = {}
-    opt.tl = opt:TextLabel()
-    opt.tl:SetLabel(pair[1])
-    opt.tl:SetFontHeight(14)
-    opt.tl:SetColor(0,0,0,255) 
-    opt.tl:SetHorizontalAlign("JUSTIFY")
-    opt.tl:SetShadowColor(255,255,255,255)
-    opt.tl:SetShadowOffset(1,1)
-    opt.tl:SetShadowBlur(1)
-    opt:SetWidth(self.w)
-    opt:SetHeight(self.h)
-    opt.t = opt:Texture()
-    opt.t:SetTexture(self.bkg) -- TODO how to fill rgb value
-    opt.t:SetBlendMode("BLEND")
-    opt:Handle("OnTouchDown",pair[2])
-    
-    if #pair[3] ~= 0 then
-        opt.menu = Menu.Create(opt,"Sequence 01026.png",pair[3],"TOPLEFT","TOPRIGHT")
-        opt:Handle("OnTouchDown",OpenOrCloseMenu)
-    end
-    
-    return opt
-end
-
-function Menu.Create(region,background,list,anchor,relanchor)
--- side:left or right or inside. offsets are for menu position
-    
-    local menu = {}
-    setmetatable(menu,Menu)
-    menu.w = MIN_WIDTH_MENU
-    menu.h = HEIGHT_MENU_OPT
-    menu.caller = region
-    menu.ancestor = -1
-    menu.bkg = background
-    menu.open = 0
-    menu.list = list
-    menu.num = #list
-    
-    local len = 0
-    for i = 1,menu.num do
-        if len < string.len(list[i][1]) then
-            len = string.len(list[i][1])
-        end
-    end
-    
-    if len >= 20 then -- TODO too long name cant be displayed
-        menu.w = MAX_WIDTH_MENU
-    elseif len > 10 then
-        menu.w = len*10
-    end
-    
-    menu[1] = menu:CreateOption(list[1])
-    menu[1]:SetAnchor(anchor,menu.caller,relanchor)
-    menu[1]:Hide()
-    
-    for i = 2,menu.num do
-        menu[i] = menu:CreateOption(list[i])
-        menu[i]:SetAnchor("BOTTOMLEFT",menu[i-1],"TOPLEFT")
-        menu[i]:Hide()
-    end
-    
-    return menu
-end
 
 ------------- menu functions, call by menu option --------------
 function MenuAbout(self)
-    output = "R#"..menubar.v.id..", sticker #"..menubar.v.sticker..", stickees"
+    output = menubar.v:Name()..", sticker #"..menubar.v.sticker..", stickees"
     if #menubar.v.stickee == 0 then
         output = output.." #-1"
     else
@@ -387,16 +372,16 @@ end
 function MenuPictureRandomly(self)
     menubar.v.bkg = pics[math.random(1,5)]
     menubar.v.t:SetTexture(menubar.v.bkg)
-    DPrint("R#"..menubar.v.id.." background pic: "..menubar.v.bkg)
+    DPrint(menubar.v:Name().." background pic: "..menubar.v.bkg)
 end
 
 function MenuColorRandomly(self)
-    DPrint("R#"..menubar.v.id.." change color")
+    DPrint(menubar.v:Name().." change color")
     menubar.v.t:SetSolidColor(math.random(0,255),math.random(0,255),math.random(0,255),255)
 end
 
 function MenuClearToWhite(self)
-    DPrint("R#"..menubar.v.id.." clear to white")
+    DPrint(menubar.v:Name().." clear to white")
     menubar.v.t:SetTexture(255,255,255,255) -- TODO original texture not removed
     menubar.v.t:SetSolidColor(255,255,255,255)
 end
@@ -418,36 +403,36 @@ function MenuRecycleSelf(self) -- remove v
     menubar.openmenu = -1
 
     table.insert(recycledregions, menubar.v.id)
-    DPrint("R#"..menubar.v.id.." removed")
+    DPrint(menubar.v:Name().." removed")
     menubar.v = nil
     
     MenuClose(self)
 end
 
-function MenuUnstick(self)
+function Unstick(v)
     output = ""
-    local er = menubar.v.sticker
-    local id = menubar.v.id
+    local er = v.sticker
+    local id = v.id
     local flag = 0
     if er ~= -1 then -- it is sticked to other
-        output = output.."a: R#"..er.." releases R#"..id..". "
+        output = output.."a: "..v.sticker:Name().." releases "..v:Name()..". "
         for k,ee in pairs(regions[er].stickee) do
             if ee == id then
                 table.remove(regions[er].stickee,k)
             end
         end
-        menubar.v.sticker = -1
-        menubar.v:SetAnchor("BOTTOMLEFT",UIParent,"BOTTOMLEFT",0,0)
-        menubar.v:EnableMoving(true)
-        menubar.v:EnableInput(true)
-        menubar.v:EnableResizing(true)
-        menubar.v.group = id
+        v.sticker = -1
+        v:SetAnchor("BOTTOMLEFT",UIParent,"BOTTOMLEFT",0,0)
+        v:EnableMoving(true)
+        v:EnableInput(true)
+        v:EnableResizing(true)
+        v.group = id
         flag = 1
     end
-    if (#menubar.v.stickee > 0) then
-        output = output.."b: R#"..id.." releases"
+    if (#v.stickee > 0) then
+        output = output.."b: "..v:Name().." releases"
         flag = 1
-        for k,ee in pairs(menubar.v.stickee) do -- other is sticked to it
+        for k,ee in pairs(v.stickee) do -- other is sticked to it
             output = output.." R#"..ee
             regions[ee].sticker = -1
             regions[ee]:SetAnchor("BOTTOMLEFT",UIParent,"BOTTOMLEFT",0,0)
@@ -456,47 +441,190 @@ function MenuUnstick(self)
             regions[ee]:EnableResizing(true)
             regions[ee].group = regions[ee].id
         end
-        while #menubar.v.stickee > 0 do
-            table.remove(menubar.v.stickee,1)
+        while #v.stickee > 0 do
+            table.remove(v.stickee,1)
         end
     end
     
     if flag == 0 then
-        DPrint("R#"..id.." nothing to unstick")
+        DPrint(v:Name().." nothing to unstick")
     else
         DPrint(output)
     end
+end
+
+function MenuUnstick(self)
+    Unstick(menubar.v)
     MenuClose(self)
 end
 
 function MenuStickControl(self)
-    if default_touchup_list[1] == AutoCheckStick then
-        DPrint("removing")
-        table.remove(default_touchup_list,1)
-        for k,v in pairs (regions) do
-            table.remove(v.eventlist["OnTouchUp"],1)
-        end
+    if auto_stick_enabled == 1 then
+        DPrint("AutoStick disabled")
+        auto_stick_enabled = 0
     else
-        DPrint("inserting")
-        table.insert(default_touchup_list,1,AutoCheckStick)
-        for k,v in pairs (regions) do
-            table.insert(v.eventlist["OnTouchUp"],1,AutoCheckStick)
-        end
+        DPrint("AutoStick enabled")
+        auto_stick_enabled = 1
     end
     
+end
+
+function VVSetTexture(newv,oldv)
+    newv.r = oldv.r
+    newv.g = oldv.g
+    newv.b = oldv.b
+    newv.a = oldv.a
+    DPrint("duplicate v color: ("..newv.r..", "..newv.g..", "..newv.b..", "..newv.a..")")
+    --VSetTexture(newv)
 end
 
 function MenuDuplicate(self)
     newv = CreateorRecycleregion('region', 'backdrop', UIParent)
     oldv = menubar.v
+    -- size
     newv:SetWidth(oldv:Width())
     newv:SetHeight(oldv:Height())
+    -- color
+    VVSetTexture(newv,oldv)
+    -- text 
+    newv.tl:SetFontHeight(14) -- oldv.tl:Height()) -- TODO
+    newv.tl:SetHorizontalAlign(oldv.tl:HorizontalAlign())
+    newv.tl:SetVerticalAlign(oldv.tl:VerticalAlign())
+    newv.tl:SetLabel(newv.tl:Label())
+    -- position
     local x,y = oldv:Center()
     local h = 10 + oldv:Height()
     newv:Show()
     newv:SetAnchor("CENTER",x,y-h)
     --newv:EnableInput(true)
+    DPrint(newv.tl:Label().." color: ("..newv.r..", "..newv.g..", "..newv.b..", "..newv.a..")"..oldv.tl:HorizontalAlign()..oldv.tl:VerticalAlign())
     MenuClose(self)
+end
+
+
+------------ Menu Class -------------
+Menu = {}
+Menu.__index = Menu
+function Menu:OpenMenu() 
+    if self.open == 0 then
+        for i = 1,self.num do
+            self[i]:EnableInput(true)
+            self[i]:MoveToTop()
+            self[i]:Show()
+        end
+        self.open = 1
+    end
+end
+
+function Menu:CloseMenu() 
+    if self.open == 1 then
+        for i = 1,self.num do
+            self[i]:Hide()
+            self[i]:EnableInput(false)
+        end
+        
+        if self.openopt ~= -1 then
+            if #self[self.openopt].menu > 0 then
+                self[self.openopt].menu:CloseMenu()
+            end
+            
+            self.openopt = -1
+        end
+        self.open = 0
+    end
+end
+
+function Menu:MoveMenuToTop() 
+    if self.open == 1 then
+        for i = 1,self.num do
+            self[i]:MoveToTop()
+            if #self[i].menu > 0 then
+                if self[i].menu.open == 1 then
+                    self[i].menu:MoveMenuToTop()
+                end
+            end
+        end
+    end
+end
+
+function OptEventFunc(self)
+    -- close other opened option
+    if self.parent.openopt ~= self.k and self.parent.openopt ~= -1 and #self.parent[self.parent.openopt].menu > 0 then
+        self.parent[self.parent.openopt].menu:CloseMenu()
+    end
+    self.parent.openopt = self.k
+    self.func(self)
+end
+
+function Menu:CreateOption(pair)
+    local opt = Region() 
+    opt.parent = self
+    opt.menu = {}
+    opt.tl = opt:TextLabel()
+    opt.tl:SetLabel(pair[1])
+    opt.tl:SetFontHeight(14)
+    opt.tl:SetColor(0,0,0,255) 
+    opt.tl:SetHorizontalAlign("JUSTIFY")
+    opt.tl:SetShadowColor(255,255,255,255)
+    opt.tl:SetShadowOffset(1,1)
+    opt.tl:SetShadowBlur(1)
+    opt:SetWidth(self.w)
+    opt:SetHeight(self.h)
+    opt.t = opt:Texture()
+    opt.t:SetTexture(self.bkg) -- TODO how to fill rgb value
+    opt.t:SetBlendMode("BLEND")
+    opt.func = pair[2]
+    
+    if #pair[3] > 0 then
+        opt.menu = Menu.Create(opt,"Sequence 01026.png",pair[3],"TOPLEFT","TOPRIGHT")
+        opt.func = OpenOrCloseMenu
+    end
+    opt:Handle("OnTouchDown",OptEventFunc)
+    
+    return opt
+end
+
+function Menu.Create(region,background,list,anchor,relanchor)
+-- side:left or right or inside. offsets are for menu position
+    
+    local menu = {}
+    setmetatable(menu,Menu)
+    menu.w = MIN_WIDTH_MENU
+    menu.h = HEIGHT_MENU_OPT
+    menu.caller = region
+    menu.ancestor = -1
+    menu.bkg = background
+    menu.open = 0
+    menu.list = list
+    menu.num = #list
+    menu.openopt = -1
+    
+    local len = 0
+    for i = 1,menu.num do
+        if len < string.len(list[i][1]) then
+            len = string.len(list[i][1])
+        end
+    end
+    
+    if len >= 20 then -- TODO too long name cant be displayed
+        menu.w = MAX_WIDTH_MENU
+    elseif len > 10 then
+        menu.w = len*10
+    end
+    
+    menu[1] = menu:CreateOption(list[1])
+    menu[1].k = 1
+    menu[1]:SetAnchor(anchor,menu.caller,relanchor)
+    menu[1]:Hide()
+    
+    for i = 2,menu.num do
+        menu[i] = menu:CreateOption(list[i])
+        menu[i].k = i
+        menu[i]:SetAnchor("BOTTOMLEFT",menu[i-1],"TOPLEFT")
+        menu[i]:Hide()
+    end
+    
+    return menu
 end
 
 ------------ notification component set --------------
@@ -560,7 +688,7 @@ function DoStick(stickee)
 end
 
 function SelectObj(self)
-    DPrint("R#"..self.id.." selected")
+    DPrint(self:Name().." selected")
     self:MoveToTop()
 end
 
@@ -582,33 +710,37 @@ function StickToClosestAnchorPoint(ee,er)
     ee.sticker = er.id
     ee:EnableMoving(false)
 
-    output = SixteenPositions[dx][dy][1].."+"..SixteenPositions[dx][dy][2].." new stickee R#"..ee.id.."! sticker R#"..er.id.." now has stickees: "
+    output = SixteenPositions[dx][dy][1].."+"..SixteenPositions[dx][dy][2].." new stickee "..ee:Name().."! sticker "..er:Name().." now has stickees: "
     for k,i in pairs(er.stickee) do
         output = output.." R#"..i
     end
     DPrint(output)
 end
 
+auto_stick_enabled = 0
+
 function AutoCheckStick(self)
   --  DPrint("in AutoCheckStick")
-    local large = Region()
-    local x = self:Left() - STICK_MARGIN
-    local y = self:Top() + STICK_MARGIN
-    large:SetWidth(self:Width() + STICK_MARGIN * 2)
-    large:SetHeight(self:Height() + STICK_MARGIN * 2)
-    large:SetAnchor("TOPLEFT",x,y)
-    
-    for k,v in pairs (regions) do -- v is sticker, self is stickee
-        if v ~= self and v.usable == 1 then
-            DPrint("there are other regions")
-            if v.sticker ~= self.id and self.sticker ~= v.id and v.group ~= self.group then
-                DPrint("there are other regions to stick to")
-                if v:RegionOverlap(large) then
-                    DPrint("they overlap")
-                    if not v:RegionOverlap(self) then
-                        if self.sticker == -1 then
-                            StickToClosestAnchorPoint(self,v)
-                            self.group = v.group
+    if auto_stick_enabled == 1 then
+        local large = Region()
+        local x = self:Left() - STICK_MARGIN
+        local y = self:Top() + STICK_MARGIN
+        large:SetWidth(self:Width() + STICK_MARGIN * 2)
+        large:SetHeight(self:Height() + STICK_MARGIN * 2)
+        large:SetAnchor("TOPLEFT",x,y)
+        
+        for k,v in pairs (regions) do -- v is sticker, self is stickee
+            if v ~= self and v.usable == 1 then
+                DPrint("there are other regions")
+                if v.sticker ~= self.id and self.sticker ~= v.id and v.group ~= self.group then
+                    DPrint("there are other regions to stick to")
+                    if v:RegionOverlap(large) then
+                        DPrint("they overlap")
+                        if not v:RegionOverlap(self) then
+                            if self.sticker == -1 then
+                                StickToClosestAnchorPoint(self,v)
+                                self.group = v.group
+                            end
                         end
                     end
                 end
@@ -667,8 +799,12 @@ function VTouchUp(self)
 end
 
 function VTouchDown(self)
-    for i = 1,#self.eventlist["OnTouchDown"] do
-        self.eventlist["OnTouchDown"][i](self)
+    if mydialog.ready == 1 then
+        BeBouncedObject(self)
+    else
+        for i = 1,#self.eventlist["OnTouchDown"] do
+            self.eventlist["OnTouchDown"][i](self)
+        end
     end
 end
 
@@ -696,7 +832,7 @@ function TouchDown(self)
     local x,y = InputPosition()
     region:Show()
     region:SetAnchor("CENTER",x,y)
-    DPrint("R#"..region.id.." created, centered at "..x..", "..y)
+    DPrint(region:Name().." created, centered at "..x..", "..y)
 end
 
 function TouchUp(self)
@@ -726,7 +862,7 @@ backdrop:Handle("OnDoubleTap", DoubleTap)
 backdrop:Handle("OnEnter", Enter)
 backdrop:Handle("OnLeave", Leave)
 backdrop:EnableInput(true)
-backdrop:SetClipRegion(0,HEIGHT_LINE,ScreenWidth(),ScreenHeight())
+backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
 backdrop:EnableClipping(true)
 
 
@@ -793,10 +929,12 @@ function StartMovingEvent(r,e)
     r:SetAnchor("CENTER",r.x,r.y)
     
     r.touch = "none"
-    for k,v in pairs (r.list) do
-        if r:RegionOverlap(v) then
-            TouchEdge(r,v)
-            break
+    if #r.list > 0 then
+        for k,i in pairs (r.list) do
+            if r:RegionOverlap(regions[i]) then
+                TouchEdge(r,regions[i])
+                break
+            end
         end
     end
     
@@ -852,7 +990,9 @@ mydialog.title.tl:SetShadowBlur(1)
 mydialog.title:SetWidth(400)
 mydialog.title:SetHeight(50)
 mydialog.title:SetAnchor("CENTER",UIParent,"CENTER")
-mydialog.hint = {{"speed (3 to 13, slow to fast)","10"},{"direction (degrees)","45"},{"OK","CANCEL"}}
+mydialog.hint = {{"speed (3 to 13, slow to fast)","10"},{"direction (degrees)","45"},{"select objects to bounce from","..."},{"OK","CANCEL"}}
+mydialog.obj = {}
+mydialog.ready = 0
 for i = 1,#mydialog.hint do
     mydialog[i] = {}
     mydialog[i][1] = Region('region','dialog',UIParent)
@@ -893,7 +1033,10 @@ i = #mydialog.hint
 mydialog[i][1]:EnableInput(true)
 mydialog[i][1]:Handle("OnTouchDown",OKclicked)
 mydialog[i][2]:Handle("OnTouchDown",CANCELclicked)
+mydialog[3][2]:Handle("OnTouchDown",nil)
+
 mydialog[1][1]:SetAnchor("TOPLEFT",mydialog.title,"BOTTOMLEFT")
+
 for i = 2,#mydialog.hint do
     mydialog[i][1]:SetAnchor("TOPLEFT",mydialog[i-1][1],"BOTTOMLEFT")
 end
@@ -911,6 +1054,8 @@ function OpenMyDialog(v)
         mydialog[i][2]:EnableInput(true)
     end
     mydialog[#mydialog.hint][1]:EnableInput(true)
+    mydialog.ready = 1
+    backdrop:EnableInput(false)
 end
 
 function CloseMyDialog()
@@ -922,6 +1067,8 @@ function CloseMyDialog()
     end
     mydialog[#mydialog.hint][1]:EnableInput(false)
     mykb:Hide()
+    mydialog.ready = 0
+    backdrop:EnableInput(true)
 end
 
 function OKclicked(self)
@@ -931,7 +1078,7 @@ function OKclicked(self)
     region.dy = math.tan(d2 * math.pi / 180)
     region.dx = d1/region.dy
     region.dy = d1*region.dy
-    region.list = bounding_list
+    region.list = mydialog.obj
     region.bound = boundary 
     region.moving = 0
     CloseMyDialog()
@@ -1042,7 +1189,6 @@ function Keyboard.Create(area)
     kb.open = 0
     kb.typingarea = area
     kb.w = ScreenWidth()
-    kb.h = ScreenWidth()/3
     kb.face = 1 -- 1: low case, 2: upper case, 3: back number
     kb:CreateKBLine("qwertyuiop","QWERTYUIOP","1234567890",1,key_w)
     kb:CreateKBLine("asdfghjkl","ASDFGHJKL","-/:;()$&@",2,key_w)
@@ -1069,6 +1215,8 @@ function Keyboard.Create(area)
     kb[3][1]:SetAnchor("BOTTOMLEFT",kb[4][1],"TOPLEFT",0,key_margin)
     kb[2][1]:SetAnchor("BOTTOMLEFT",kb[3][1],"TOPLEFT",key_w/2,key_margin)
     kb[1][1]:SetAnchor("BOTTOMLEFT",kb[2][1],"TOPLEFT",0-key_w/2,key_margin)
+    
+    kb.h = #kb * (key_h+key_margin)
     
     return kb
 end
@@ -1107,14 +1255,16 @@ end
 function OpenOrCloseKeyboard(self)
     if mykb.open == 0 then 
         -- self.tl:SetLabel("")
-        self.tl:SetHorizontalAlign("LEFT")
+        -- self.tl:SetHorizontalAlign("LEFT")
         mykb.typingarea = self
         CloseColorWheel(self)
         DPrint("to open")
         mykb:Show()
+        backdrop:SetClipRegion(0,mykb.h,ScreenWidth(),ScreenHeight())
     else 
         DPrint("to close")
         mykb:Hide()
+        backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
     end
 end
 
@@ -1138,13 +1288,17 @@ color_wheel:EnableResizing(false)
 color_wheel:Handle("OnMove",UpdateColor)
 color_wheel:Handle("OnDoubleTap",CloseColorWheel)
 
+function VSetTexture(v)
+    v.t:SetTexture(v.r,v.g,v.b,v.a)
+end
+
 function UpdateColor(self,x,y,dx,dy)
     xx = (x+dx-color_wheel:Left())*1530/color_w
     yy = y+dy-color_wheel:Bottom()*255/color_h
     local r=0
     local g=0
     local b=0
-    local a=yy
+    self.region.a=yy
     
     if xx < 255 then
         r = 255
@@ -1172,13 +1326,12 @@ function UpdateColor(self,x,y,dx,dy)
         b = 1530 - xx
     end
     
-    r = r*a/255
-    g = g*a/255
-    b = b*a/255
+    self.region.r = r*self.region.a/255
+    self.region.g = g*self.region.a/255
+    self.region.b = b*self.region.a/255
     
-    
-    self.region.t:SetTexture(r,g,b,a)
-    DPrint("x"..xx.." y"..yy.." r"..r.." g"..g.." b"..b.." a"..a)
+    VSetTexture(self.region)
+    DPrint("x"..xx.." y"..yy.." r"..self.region.r.." g"..self.region.g.." b"..self.region.b.." a"..self.region.a)
 end
 
 function MenuChangeColor(self)
@@ -1215,17 +1368,17 @@ end
 
 
 ------------------------------------------------------------------
-pagebutton=Region('region', 'pagebutton', UIParent);
-pagebutton:SetWidth(pagersize);
-pagebutton:SetHeight(pagersize);
-pagebutton:SetLayer("TOOLTIP");
-pagebutton:SetAnchor('BOTTOMLEFT',ScreenWidth()-pagersize-4,ScreenHeight()-pagersize-4); 
+pagebutton=Region('region', 'pagebutton', UIParent)
+pagebutton:SetWidth(pagersize)
+pagebutton:SetHeight(pagersize)
+pagebutton:SetLayer("TOOLTIP")
+pagebutton:SetAnchor('BOTTOMLEFT',ScreenWidth()-pagersize-4,ScreenHeight()-pagersize-4)
 pagebutton:EnableClamping(true)
 pagebutton:Handle("OnTouchDown", FlipPage)
-pagebutton.texture = pagebutton:Texture("circlebutton-16.png");
-pagebutton.texture:SetGradientColor("TOP",255,255,255,255,255,255,255,255);
-pagebutton.texture:SetGradientColor("BOTTOM",255,255,255,255,255,255,255,255);
+pagebutton.texture = pagebutton:Texture("circlebutton-16.png")
+pagebutton.texture:SetGradientColor("TOP",255,255,255,255,255,255,255,255)
+pagebutton.texture:SetGradientColor("BOTTOM",255,255,255,255,255,255,255,255)
 pagebutton.texture:SetBlendMode("BLEND")
-pagebutton.texture:SetTexCoord(0,1.0,0,1.0);
-pagebutton:EnableInput(true);
-pagebutton:Show();
+pagebutton.texture:SetTexCoord(0,1.0,0,1.0)
+pagebutton:EnableInput(true)
+pagebutton:Show()

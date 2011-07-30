@@ -435,7 +435,7 @@ static bool cameraBeingUsedAsBrush = false;
 	CLLocationDegrees  latitude = newLocation.coordinate.latitude;
 	CLLocationDegrees longitude = newLocation.coordinate.longitude;
 	
-	float loc_latitude = latitude/90.0; // Normalize!
+	float loc_latitude = latitude/180.0; // Normalize!
 	float loc_longitude = longitude/180.0; // Normalize!
 	
 	// lua API events
@@ -677,8 +677,9 @@ void SetupBrush()
 				glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ZERO);
 				break;
 		}*/
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-//		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+//		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); // Additive "blending", color keeps being applied weight by alpha of the brush 
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Multiplicative "blending", color of background mixes with brush alpha. Can never saturate if either one or the other is not 1.
+//		glDisable(GL_BLEND); // Solid color mode
 		glEnable(GL_POINT_SPRITE_OES);
 		glTexEnvf(GL_POINT_SPRITE_OES, GL_COORD_REPLACE_OES, GL_TRUE);
 	}	
@@ -686,7 +687,10 @@ void SetupBrush()
 	{
 		glEnable(GL_DITHER);
 		glDisable(GL_TEXTURE_2D);
-		glDisable(GL_BLEND);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); // Additive "blending", color keeps being applied weight by alpha of the brush 
+//		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Multiplicative "blending", color of background mixes with brush alpha. Can never saturate if either one or the other is not 1.
+//		glDisable(GL_BLEND); // Solid color mode
         glDisable(GL_POINT_SPRITE_OES);
 	}
 	glPointSize(brushsize);
@@ -2060,10 +2064,14 @@ void ClampRegion(urAPI_Region_t*region)
 {
 	if(region->left < 0) region->left = 0;
 	if(region->bottom < 0) region->bottom = 0;
+//    if(region->ofsx < 0) region->ofsx = 0;
+//    if(region->ofsy < 0) region->ofsy = 0;
 	if(region->width > SCREEN_WIDTH) region->width = SCREEN_WIDTH;
 	if(region->height > SCREEN_HEIGHT) region->height = SCREEN_HEIGHT;
 	if(region->left+region->width > SCREEN_WIDTH) region->left = SCREEN_WIDTH-region->width;
 	if(region->bottom+region->height > SCREEN_HEIGHT) region->bottom = SCREEN_HEIGHT-region->height;
+//    if(region->ofsx+region->width > SCREEN_WIDTH) region->ofsx = SCREEN_WIDTH-region->width;;
+//    if(region->ofsy+region->height > SCREEN_HEIGHT) region->ofsy = SCREEN_HEIGHT-region->height;
 }
 
 

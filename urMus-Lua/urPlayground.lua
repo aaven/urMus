@@ -17,6 +17,7 @@ function RecycleSelf(self)
 end
 
 function CreateorRecycleregion(ftype, name, parent)
+<<<<<<< HEAD
     local region
     if #recycledregions > 0 then
         region = recycledregions[#recycledregions]
@@ -26,6 +27,18 @@ function CreateorRecycleregion(ftype, name, parent)
         region.t = region:Texture()
     end
     return region
+=======
+	local region
+	if #recycledregions > 0 then
+		region = recycledregions[#recycledregions]
+		table.remove(recycledregions)
+	else
+		region = Region('region', 'backdrop', UIParent)
+		region.t = region:Texture()
+        region:EnableClamping(true)
+	end
+	return region
+>>>>>>> upstream/master
 end
 
 

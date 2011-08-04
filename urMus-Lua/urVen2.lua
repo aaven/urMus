@@ -3,16 +3,14 @@
 -- based on urVen.lua
 -- p.s. menu becomes global
 
+SetPage(18)
 FreeAllRegions()
-DPrint("Welcome to urVen =)")
+DPrint("Welcome to urVen2 =)")
 
 ---------------- constant -------------------
 MIN_WIDTH_MENU = 100
 MAX_WIDTH_MENU = 200
-MAX_NUM_MENU_OPT = 20
 HEIGHT_MENU_OPT = 30
-NUM_MENU_OPTION = 7 -- MenuCancel is not needed anymore
-INDEX_STICK_MENU = 6
 
 STICK_MARGIN = 20
 HEIGHT_LINE = 30
@@ -21,6 +19,10 @@ local regions = {}
 local recycledregions = {}
 local auto_stick_enabled = 0
 local pics = {"vinyl.png","Ornament1.png","Pirate1.png","Play.png","Right.png"}
+
+local moving_default_speed = "8" -- 3 to 10, slow to fast
+local moving_default_dir = "45" -- degree
+local boundary = {0,ScreenHeight(),0,ScreenWidth()} -- boundaries {minx,maxx,miny,maxy}
 
 local SixteenPositions = {} -- SixteenPositions(p1)(p2): ee:SetAnchor(p2,er,p1)
 function InitializeUrStick()  
@@ -50,7 +52,8 @@ InitializeUrStick()
 ----------- global helper functions ------------
 
 function VSetTexture(v)
-    v.t:SetTexture(v.r,v.g,v.b,v.a)
+    v.t:SetSolidColor(v.r,v.g,v.b,v.a)
+    v.t:SetTexture(v.bkg)
 end
 
 function VVSetTexture(newv,oldv)
@@ -58,7 +61,8 @@ function VVSetTexture(newv,oldv)
     newv.g = oldv.g
     newv.b = oldv.b
     newv.a = oldv.a
-    DPrint("duplicate v color: ("..newv.r..", "..newv.g..", "..newv.b..", "..newv.a..")")
+    newv.bkg = oldv.bkg
+    newv.t:SetBlendMode(oldv.t:BlendMode())
     VSetTexture(newv)
 end
 
@@ -95,7 +99,7 @@ function Unstick(v)
             regions[ee].group = regions[ee].id
         end
         while #v.stickee > 0 do
-            table.remove(v.stickee,1)
+            table.remove(v.stickee)
         end
     end
     
@@ -104,6 +108,15 @@ function Unstick(v)
     else
         DPrint(output)
     end
+end
+
+
+function Highlight(r)
+    r.t:SetTexture(100,100,100,255)
+end
+
+function UnHighlight(r)
+    r.t:SetTexture(200,200,200,255)
 end
 
 ------- backdrop ------
@@ -146,6 +159,47 @@ backdrop:Handle("OnLeave", Leave)
 backdrop:EnableInput(true)
 backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
 backdrop:EnableClipping(true)
+
+------------ notification component set --------------
+function FadeNotification(self, elapsed)
+    if self.staytime > 0 then
+        self.staytime = self.staytime - elapsed
+        return
+    end
+    if self.fadetime > 0 then
+        self.fadetime = self.fadetime - elapsed
+        self.alpha = self.alpha - self.alphaslope * elapsed
+        self:SetAlpha(self.alpha)
+    else
+        self:Hide()
+        self:Handle("OnUpdate", nil)
+    end
+end
+
+function ShowNotification(note)
+    notificationregion.textlabel:SetLabel(note)
+    notificationregion.staytime = 1.5
+    notificationregion.fadetime = 2.0
+    notificationregion.alpha = 1
+    notificationregion.alphaslope = 2
+    notificationregion:Handle("OnUpdate", FadeNotification)
+    notificationregion:SetAlpha(1.0)
+    notificationregion:Show()
+end
+
+local notificationregion=Region('region', 'notificationregion', UIParent)
+notificationregion:SetWidth(ScreenWidth())
+notificationregion:SetHeight(48*2)
+notificationregion:SetLayer("TOOLTIP")
+notificationregion:SetAnchor('BOTTOMLEFT',0,ScreenHeight()/2-24) 
+notificationregion:EnableClamping(true)
+notificationregion:Show()
+notificationregion.textlabel=notificationregion:TextLabel()
+notificationregion.textlabel:SetFont("Trebuchet MS")
+notificationregion.textlabel:SetHorizontalAlign("CENTER")
+notificationregion.textlabel:SetLabel("")
+notificationregion.textlabel:SetFontHeight(48)
+notificationregion.textlabel:SetColor(255,255,255,190)
 
 ------------  color wheel -------------
 color_w = 256
@@ -270,6 +324,7 @@ end
 
 function OptEventFunc(self)
     -- close other opened option
+    Highlight(self)
     if self.parent.openopt ~= self.k and self.parent.openopt ~= -1 and #self.parent[self.parent.openopt].menu > 0 then
         self.parent[self.parent.openopt].menu:CloseMenu()
     end
@@ -292,16 +347,18 @@ function Menu:CreateOption(pair)
     opt.tl:SetShadowBlur(1)
     opt:SetWidth(self.w)
     opt:SetHeight(self.h)
-    opt.t = opt:Texture()
+    opt.t = opt:Texture(200,200,200,255)
     opt.t:SetTexture(self.bkg) -- TODO how to fill rgb value
     opt.t:SetBlendMode("BLEND")
     opt.func = pair[2]
     
     if #pair[3] > 0 then
-        opt.menu = Menu.Create(opt,"Sequence 01026.png",pair[3],"TOPLEFT","TOPRIGHT")
+        opt.menu = Menu.Create(opt,"",pair[3],"TOPLEFT","TOPRIGHT")
         opt.func = OpenOrCloseMenu
     end
     opt:Handle("OnTouchDown",OptEventFunc)
+    opt:Handle("OnTouchUp",UnHighlight)
+    opt:Handle("OnLeave",UnHighlight)
     
     return opt
 end
@@ -350,6 +407,12 @@ end
 
 
 ------------- menu functions, call by menu option --------------
+text_size_list = {"8","10","12","14","16","20","24","28","32","36"}
+text_position_list = {"top left","top center","top right","middle left","middle center","middle right","bottom left","bottom center","bottom right"}
+text_position_hor_list = {"LEFT","CENTER","RIGHT","LEFT","CENTER","RIGHT","LEFT","CENTER","RIGHT"}
+text_position_ver_list = {"TOP","TOP","TOP","MIDDLE","MIDDLE","MIDDLE","BOTTOM","BOTTOM","BOTTOM"}
+blend_mode_list = {"DISABLED", "BLEND", "ALPHAKEY", "ADD", "MOD", "SUB"}
+
 function MenuAbout(self)
     local vv = self.boss.v
     output = vv:Name()..", sticker #"..vv.sticker..", stickees"
@@ -377,7 +440,7 @@ function MenuColorRandomly(self)
     vv.g = math.random(0,255)
     vv.b = math.random(0,255)
     vv.a = math.random(0,255)
-    vv.t:SetTexture(vv.r,vv.g,vv.b,vv.a)
+    vv.t:SetSolidColor(vv.r,vv.g,vv.b,vv.a)
 end
 
 function MenuClearToWhite(self)
@@ -387,12 +450,12 @@ function MenuClearToWhite(self)
     vv.g = 255
     vv.b = 255
     vv.a = 255
-    vv.t:SetTexture(255,255,255,255) -- TODO original texture not removed
-    vv.t:SetSolidColor(255,255,255,255)
+    vv.t:SetTexture(255,255,255,255)
 end
 
 function MenuUnstick(self)
     Unstick(self.boss.v)
+    UnHighlight(self)
     CloseMenuBar()
 end
 
@@ -410,6 +473,7 @@ function MenuRecycleSelf(self) -- remove v
     table.insert(recycledregions, vv.id)
     DPrint(vv:Name().." removed")
     
+    UnHighlight(self)
     CloseMenuBar()
 end
 
@@ -432,7 +496,7 @@ function MenuDuplicate(self)
     -- color
     VVSetTexture(newv,oldv)
     -- text 
-    newv.tl:SetFontHeight(14) -- oldv.tl:Height()) -- TODO
+    newv.tl:SetFontHeight(oldv.tl:FontHeight())
     newv.tl:SetHorizontalAlign(oldv.tl:HorizontalAlign())
     newv.tl:SetVerticalAlign(oldv.tl:VerticalAlign())
     newv.tl:SetLabel(newv.tl:Label())
@@ -441,9 +505,9 @@ function MenuDuplicate(self)
     local h = 10 + oldv:Height()
     newv:Show()
     newv:SetAnchor("CENTER",x,y-h)
-    --newv:EnableInput(true)
-    DPrint(newv.tl:Label().." color: ("..newv.r..", "..newv.g..", "..newv.b..", "..newv.a..")"..oldv.tl:HorizontalAlign()..oldv.tl:VerticalAlign())
-    CloseMenuBar()
+    DPrint(newv.tl:Label().." Color: ("..newv.r..", "..newv.g..", "..newv.b..", "..newv.a.."). Background pic: "..newv.bkg..". Blend mode: "..newv.t:BlendMode())
+    --UnHighlight(self)
+    --CloseMenuBar()
 end
 
 function MenuTextSize(self)
@@ -462,19 +526,29 @@ function MenuTextPosition(self)
 end
 
 function MenuText(self)
+    DPrint("Current text size: " .. self.boss.v.tl:FontHeight() .. ", position: " .. self.boss.v.tl:VerticalAlign() .. " & " .. self.boss.v.tl:HorizontalAlign())
 end
 
 function MenuChangeColor(self)
     color_wheel:Show()
     color_wheel.region = self.boss.v
     color_wheel:EnableInput(true)
+    UnHighlight(self)
     CloseMenuBar()
 end
 
+function MenuTransparency(self)
+    DPrint("Current blend mode: " .. self.boss.v.t:BlendMode())
+end
 
+function MenuBlendMode(self)
+    DPrint("Change to blend mode: " .. blend_mode_list[self.k])
+    self.boss.v.t:SetBlendMode(blend_mode_list[self.k])
+end
 
 function MenuMoving(self)
     OpenMyDialog(self.boss.v)
+    UnHighlight(self)
     CloseMenuBar()
 end
           
@@ -486,16 +560,20 @@ function_list[1] = {"Try me", {
                                 {"rand pic",MenuPictureRandomly,{}},
                                 {"rand color",MenuColorRandomly,{}},
                                 {"clear bkg",MenuClearToWhite,{}},
+                                {"transparency control",MenuTransparency,{
+                                                            {blend_mode_list[1],MenuBlendMode,{}},
+                                                            {blend_mode_list[2],MenuBlendMode,{}},
+                                                            {blend_mode_list[3],MenuBlendMode,{}},
+                                                            {blend_mode_list[4],MenuBlendMode,{}},
+                                                            {blend_mode_list[5],MenuBlendMode,{}},
+                                                            {blend_mode_list[6],MenuBlendMode,{}}
+                                                        }},
                                 {"unstick",MenuUnstick,{}},
                                 {"remove v",MenuRecycleSelf,{}},
                                 {"autostick control",MenuStickControl,{}}
                             }
                     }
                     
-text_size_list = {"8","10","12","14","16","20","24","28","32","36"}
-text_position_list = {"top left","top center","top right","middle left","middle center","middle right","bottom left","bottom center","bottom right"}
-text_position_hor_list = {"LEFT","CENTER","RIGHT","LEFT","CENTER","RIGHT","LEFT","CENTER","RIGHT"}
-text_position_ver_list = {"TOP","TOP","TOP","MIDDLE","MIDDLE","MIDDLE","BOTTOM","BOTTOM","BOTTOM"}
 function_list[2] = {"Edit", {
                                 {"color wheel",MenuChangeColor,{}},
                                 {"duplicate",MenuDuplicate,{}},
@@ -565,10 +643,10 @@ for k,name in pairs (menubar.menus) do
     r.tl:SetShadowColor(255,255,255,255)
     r.tl:SetShadowOffset(1,1)
     r.tl:SetShadowBlur(1)
-    r.t = r:Texture(200,200,200,255)
+    r.t = r:Texture(250,250,250,255)
     r.k = k
     r.boss = menubar
-    r.menu = Menu.Create(r,"Sequence 01026.png",menubar.menus[k][2],"BOTTOMLEFT","TOPLEFT")
+    r.menu = Menu.Create(r,"",menubar.menus[k][2],"BOTTOMLEFT","TOPLEFT")
     r:SetWidth(ScreenWidth()/#menubar.menus)
     r:SetHeight(HEIGHT_LINE)
     r:EnableInput(false)
@@ -596,11 +674,16 @@ Keyboard.__index = Keyboard
 function KeyTouchDown(self)
     DPrint(self.faces[self.parent.face])
     self.parent.typingarea.tl:SetLabel(self.parent.typingarea.tl:Label()..self.faces[self.parent.face])
+    Highlight(self)
     for i = 1,4 do
         for j = 1,#self.parent[i] do
             self.parent[i][j]:MoveToTop()
         end
     end
+end
+
+function KeyTouchUp(self)
+    UnHighlight(self)
 end
 
 function Keyboard:CreateKey(ch1,ch2,ch3,w)
@@ -619,6 +702,8 @@ function Keyboard:CreateKey(ch1,ch2,ch3,w)
     key:SetHeight(key_h)
     key:SetWidth(w)
     key:Handle("OnTouchDown",KeyTouchDown)
+    key:Handle("OnTouchUp",KeyTouchUp)
+    key:Handle("OnLeave",KeyTouchUp)
     return key
 end
 
@@ -640,19 +725,23 @@ function Keyboard:UpdateFaces(face)
             self[i][j].tl:SetLabel(self[i][j].faces[face])
         end
     end
+    UnHighlight(self[3][10])
 end
 
 function KeyTouchDownShift(self)
     if self.parent.face == 1 then
         DPrint("1")
         self.parent:UpdateFaces(2)
+        Highlight(self)
     elseif self.parent.face == 2 then
         DPrint("2")
         self.parent:UpdateFaces(1)
+        UnHighlight(self)
     end
 end
 
 function KeyTouchDownFlip(self)
+    Highlight(self)
     if self.parent.face == 3 then
         self.parent:UpdateFaces(1)
     else
@@ -661,6 +750,7 @@ function KeyTouchDownFlip(self)
 end
 
 function KeyTouchDownBack(self)
+    Highlight(self)
     local s = self.parent.typingarea.tl:Label()
     if s ~= "" then
         DPrint(s)
@@ -669,6 +759,7 @@ function KeyTouchDownBack(self)
 end
 
 function KeyTouchDownClear(self)
+    Highlight(self)
     self.parent.typingarea.tl:SetLabel("")
 end
 
@@ -686,6 +777,8 @@ function Keyboard.Create(area)
     kb[3][10] = kb:CreateKey("shift","shift","disable",key_w)
     kb[3][10]:SetAnchor("TOPLEFT",kb[3][9],"TOPRIGHT",key_margin,0)
     kb[3][10]:Handle("OnTouchDown",KeyTouchDownShift)
+    kb[3][10]:Handle("OnTouchUp",nil)
+    kb[3][10]:Handle("OnLeave",nil)
     kb[3].num = kb[3].num + 1
     kb[4] = {}
     kb[4].num = 3
@@ -710,14 +803,17 @@ function Keyboard.Create(area)
     return kb
 end
 
-function Keyboard:Show()
+function Keyboard:Show(face)
     for i = 1,4 do
         for j = 1,#self[i] do
             self[i][j]:EnableInput(true)
             self[i][j]:Show()
             self[i][j]:MoveToTop()
+            self[i][j].tl:SetLabel(self[i][j].faces[face])
         end
     end
+    UnHighlight(self[3][10])
+    self.face = face
     self.open = 1
 end
 
@@ -742,7 +838,21 @@ function OpenOrCloseKeyboard(self)
         mykb.typingarea = self
         CloseColorWheel(color_wheel)
         DPrint("to open")
-        mykb:Show()
+        mykb:Show(1)
+        backdrop:SetClipRegion(0,mykb.h,ScreenWidth(),ScreenHeight())
+    else 
+        DPrint("to close")
+        mykb:Hide()
+        backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
+    end
+end
+
+function OpenOrCloseNumericKeyboard(self)
+    if mykb.open == 0 then 
+        mykb.typingarea = self
+        CloseColorWheel(color_wheel)
+        DPrint("to open")
+        mykb:Show(3)
         backdrop:SetClipRegion(0,mykb.h,ScreenWidth(),ScreenHeight())
     else 
         DPrint("to close")
@@ -752,102 +862,131 @@ function OpenOrCloseKeyboard(self)
 end
 
 ---------------------- moving --------------------------
-function TouchEdge(r,other)
-    if r:Bottom() <= other:Top() and r:Top() >= other:Top() then
-        DPrint("bottom"..other:Name())
+function TouchObject(r,other)
+    local bb = r:Bottom() + r.dy
+    local tt = r:Top() + r.dy
+    local ll = r:Left() + r.dx
+    local rr = r:Right() + r.dx
+    local b2 = other:Bottom()
+    local t2 = other:Top()
+    local l2 = other:Left()
+    local r2 = other:Right()
+
+    if (l2 < ll and ll < r2 or l2 < rr and rr < r2) and (b2 < tt and tt < t2 or b2 < bb and bb < t2) then
+        -- two regions is about to overlap
+        if bb <= t2 and tt >= t2 and r:Bottom() >= t2 then
+            DPrint("bottom")
+            r.y = r.y + t2 - bb + r.dy
+            r.dy = math.abs(r.dy)
+            r.touch = "bottom"
+        elseif ll <= r2 and rr >= r2 and r:Left() >= r2 then
+            DPrint("left")
+            r.x = r.x + r2 - ll + r.dx
+            r.dx = math.abs(r.dx)
+            r.touch = "left"
+        elseif tt >= b2 and bb <= b2 and r:Top() <= b2 then
+            DPrint("top")
+            r.y = r.y + b2 - tt + r.dy
+            r.dy = -math.abs(r.dy)
+            r.touch = "top"
+        elseif rr >= l2 and ll <= l2 and r:Right() <= l2 then
+            DPrint("right")
+            r.x = r.x + l2- rr + r.dx
+            r.dx = -math.abs(r.dx)
+            r.touch = "right"
+        end
+    end
+end
+
+function TouchBound(r)
+    if r:Bottom() + r.dy <= r.bound[1] then
+        DPrint("bottom")
+        r.y = r.y + r.bound[1] - r:Bottom()
+        r.dy = math.abs(r.dy)
         r.touch = "bottom"
-    elseif r:Left() <= other:Right() and r:Right() >= other:Right()then
-        DPrint("left"..other:Name())
+    elseif r:Left() + r.dx <= r.bound[3] then
+        DPrint("left")
+        r.x = r.x + r.bound[3] - r:Left()
+        r.dx = math.abs(r.dx)
         r.touch = "left"
-    elseif r:Top() >= other:Bottom() and r:Bottom() <= other:Bottom()then
-        DPrint("top"..other:Name())
+    elseif r:Top() + r.dy >= r.bound[2] then
+        DPrint("top")
+        r.y = r.y + r.bound[2] - r:Top()
+        r.dy = -math.abs(r.dy)
         r.touch = "top"
-    elseif r:Right() >= other:Left() and r:Left() <= other:Left()then
-        DPrint("right"..other:Name())
+    elseif r:Right() + r.dx >= r.bound[4] then
+        DPrint("right")
+        r.x = r.x + r.bound[4] - r:Right()
+        r.dx = -math.abs(r.dx)
         r.touch = "right"
-    else
-        r.touch = "none"
     end
 end
 
 function StartMovingEvent(r,e)
-    r.x = r.x + r.dx
-    r.y = r.y + r.dy
-    r:SetAnchor("CENTER",r.x,r.y)
-    
-    r.touch = "none"
-    if #r.list > 0 then
-        for k,i in pairs (r.list) do
-            if r:RegionOverlap(regions[i]) then
-                TouchEdge(r,regions[i])
+    if r.touch ~= "none" then
+        r.x = r.x + r.dx
+        r.y = r.y + r.dy
+        r.touch = "none"
+    else
+        for k,i in pairs (r.movelist) do
+            TouchObject(r,regions[i])
+            if r.touch ~= "none" then
                 break
+            end
+        end
+    
+        if r.touch == "none" then
+            TouchBound(r)
+            if r.touch == "none" then
+                r.x = r.x + r.dx
+                r.y = r.y + r.dy
             end
         end
     end
     
-    if r.touch == "top" then
-        r.dy = -math.abs(r.dy)
-    elseif r.touch == "right" then
-        r.dx = -math.abs(r.dx)
-    elseif r.touch == "bottom" then
-        r.dy = math.abs(r.dy)
-    elseif r.touch == "left" then
-        r.dx = math.abs(r.dx)
-    else
-        if r:Bottom() <= r.bound[1] then
-        DPrint("none bottom")
-            r.dy = math.abs(r.dy)
-        elseif r:Left() <= r.bound[3] then
-        DPrint("none left")
-            r.dx = math.abs(r.dx)
-        elseif r:Top() >= r.bound[2] then
-        DPrint("none top")
-            r.dy = -math.abs(r.dy)
-        elseif r:Right() >= r.bound[4] then
-        DPrint("none right")
-            r.dx = -math.abs(r.dx)
-        end
-    end
+    r:SetAnchor("CENTER",r.x,r.y)
 end
 
 function StartMoving(self)
     self:Handle("OnUpdate",nil)
     self.x,self.y = self:Center()
     self.moving = 1
+    self.touch = "none"
     self:Handle("OnUpdate",StartMovingEvent)
 end
-
-local speed = 10 -- 3 to 10, slow to fast
-local dir = math.pi/4 -- degree
-local bounding_list = {} -- bounding objects
-local boundary = {0,ScreenHeight(),0,ScreenWidth()} -- boundaries {minx,maxx,miny,maxy}
-local signal = "OnTouchDown" -- start/stop signal
 
 function OKclicked(self)
     local dd = self.parent
     d1 = tonumber(dd[1][2].tl:Label())
     d2 = tonumber(dd[2][2].tl:Label())
+    if d1 <= 0 or d1 >= 13 then
+        DPrint("Speed must be in the range (0,13]")
+        return
+    end
+    if d2 >= 360 or d2 < 0 then
+        DPrint("Direction must be in the range [0,360)")
+        return
+    end
+
     local region = dd.caller
-    region.dy = math.tan(d2 * math.pi / 180)
-    region.dx = d1/region.dy
-    region.dy = d1*region.dy
-    region.list = dd.obj
+    local deg = d2 * math.pi / 180
+    region.dy = d1*math.sin(deg)
+    region.dx = d1*math.cos(deg)
+    region.movelist = dd.obj
     region.bound = boundary 
-    region.moving = 0
+
     CloseMyDialog()
     StartMoving(region)
 end
 
 function CANCELclicked(self)
     local dd = self.parent
-    dd.caller.data = {}
-    dd.caller.giveninput = 0
     CloseMyDialog()
 end
 
 local mydialog = {}
 mydialog.title = Region('region','dialog',UIParent)
-mydialog.title.t = mydialog.title:Texture(255,255,255,255)
+mydialog.title.t = mydialog.title:Texture(240,240,240,255)
 mydialog.title.tl = mydialog.title:TextLabel()
 mydialog.title.tl:SetLabel("Move! Touch the region to stop moving.")
 mydialog.title.tl:SetFontHeight(16)
@@ -859,7 +998,7 @@ mydialog.title.tl:SetShadowBlur(1)
 mydialog.title:SetWidth(400)
 mydialog.title:SetHeight(50)
 mydialog.title:SetAnchor("CENTER",UIParent,"CENTER")
-mydialog.hint = {{"speed (3 to 13, slow to fast)","10"},{"direction (degrees)","45"},{"select objects to bounce from","..."},{"OK","CANCEL"}}
+mydialog.hint = {{"speed (1 to 13, slow to fast)",moving_default_speed},{"direction (degrees)",moving_default_dir},{"select objects to bounce from",""},{"OK","CANCEL"}}
 mydialog.obj = {}
 mydialog.ready = 0
 for i = 1,#mydialog.hint do
@@ -873,7 +1012,7 @@ for i = 1,#mydialog.hint do
     mydialog[i][1].tl:SetShadowColor(255,255,255,255)
     mydialog[i][1].tl:SetShadowOffset(1,1)
     mydialog[i][1].tl:SetShadowBlur(1)
-    mydialog[i][1].t = mydialog[i][1]:Texture(255,255,255,255)
+    mydialog[i][1].t = mydialog[i][1]:Texture(200,200,200,255)
     mydialog[i][1]:SetWidth(250)
     mydialog[i][1]:SetHeight(50)
     mydialog[i][1]:EnableInput(false)
@@ -889,12 +1028,12 @@ for i = 1,#mydialog.hint do
     mydialog[i][2].tl:SetShadowColor(255,255,255,255)
     mydialog[i][2].tl:SetShadowOffset(1,1)
     mydialog[i][2].tl:SetShadowBlur(1)
-    mydialog[i][2].t = mydialog[i][2]:Texture(255,255,255,255)
+    mydialog[i][2].t = mydialog[i][2]:Texture(200,200,200,255)
     mydialog[i][2]:SetWidth(150)
     mydialog[i][2]:SetHeight(50)
     mydialog[i][2]:EnableMoving(false)
     mydialog[i][2]:EnableResizing(false)
-    mydialog[i][2]:Handle("OnTouchDown",OpenOrCloseKeyboard)
+    mydialog[i][2]:Handle("OnTouchDown",OpenOrCloseNumericKeyboard)
     
     mydialog[i][2]:SetAnchor("LEFT",mydialog[i][1],"RIGHT")
 end
@@ -917,6 +1056,15 @@ function OpenMyDialog(v)
     mydialog.title:MoveToTop()
     mydialog.caller = v
     DPrint(v.id)
+    while #mydialog.obj > 0 do
+        table.remove(mydialog.obj)
+    end
+    while #v.movelist > 0 do
+        table.remove(v.movelist)
+    end
+    mydialog[1][2].tl:SetLabel("8")
+    mydialog[2][2].tl:SetLabel("45")
+    mydialog[3][2].tl:SetLabel("")
     for i = 1,#mydialog.hint do
         mydialog[i][1]:Show()
         mydialog[i][2]:Show()
@@ -936,9 +1084,7 @@ function CloseMyDialog()
         mydialog[i][2]:Hide()
         mydialog[i][2]:EnableInput(false)
     end
-    while #mydialog.obj > 0 do
-        table.remove(mydialog.obj,1)
-    end
+    
     mydialog[#mydialog.hint][1]:EnableInput(false)
     mykb:Hide()
     mydialog.ready = 0
@@ -946,8 +1092,18 @@ function CloseMyDialog()
 end
 
 function BeBouncedObject(self)
+    found = 0
     if mydialog.ready == 1 then
-        table.insert(mydialog.obj,self.id)
+        for k,i in pairs(mydialog.obj) do
+            if i == self.id then
+                found = 1
+                break
+            end
+        end
+        if found == 0 then
+            table.insert(mydialog.obj,self.id)
+            mydialog[3][2].tl:SetLabel(mydialog[3][2].tl:Label()..self:Name().." ")
+        end
     end
 end
 
@@ -1006,7 +1162,7 @@ function HoldToTrigger(self, elapsed)
 end
 
 function HoldTrigger(self)
-    self.holdtime = 0.8
+    self.holdtime = 0.5
     self.x,self.y = self:Center()
     self:Handle("OnUpdate",HoldToTrigger)
 end
@@ -1212,21 +1368,18 @@ function PlainVRegion(r)
     r.stickee = {}
     
     -- initialize for moving
-    r.vlist_through = {}
-    r.vlist_bounce_nochange = {}
-    r.vlist_bounce_hide = {}
-    r.bound_through = {}
-    r.bound_bounce_nochange = {}
-    r.bound_bounce_hide = {}
     r.moving = 0
     r.dx = 0
     r.dy = 0
+    r.movelist = {}
+    r.bound = boundary
     
     -- initialize texture, label and size
     r.r = 255
     r.g = 255
     r.b = 255
     r.a = 255
+    r.bkg = ""
     r.t:SetTexture(r.r,r.g,r.b,r.a)
     r.tl:SetLabel(r:Name())
     r.tl:SetFontHeight(16)
@@ -1281,51 +1434,6 @@ function CreateorRecycleregion(ftype, name, parent)
     return region
 end
 
-
-
------------- notification component set --------------
------------- add ShowNotification(note) to wanted event --------------
-function FadeNotification(self, elapsed)
-    if self.staytime > 0 then
-        self.staytime = self.staytime - elapsed
-        return
-    end
-    if self.fadetime > 0 then
-        self.fadetime = self.fadetime - elapsed
-        self.alpha = self.alpha - self.alphaslope * elapsed
-        self:SetAlpha(self.alpha)
-    else
-        self:Hide()
-        self:Handle("OnUpdate", nil)
-    end
-end
-
-function ShowNotification(note)
-    notificationregion.textlabel:SetLabel(note)
-    notificationregion.staytime = 1.5
-    notificationregion.fadetime = 2.0
-    notificationregion.alpha = 1
-    notificationregion.alphaslope = 2
-    notificationregion:Handle("OnUpdate", FadeNotification)
-    notificationregion:SetAlpha(1.0)
-    notificationregion:Show()
-end
-
-local notificationregion=Region('region', 'notificationregion', UIParent)
-notificationregion:SetWidth(ScreenWidth())
-notificationregion:SetHeight(48*2)
-notificationregion:SetLayer("TOOLTIP")
-notificationregion:SetAnchor('BOTTOMLEFT',0,ScreenHeight()/2-24) 
-notificationregion:EnableClamping(true)
-notificationregion:Show()
-notificationregion.textlabel=notificationregion:TextLabel()
-notificationregion.textlabel:SetFont("Trebuchet MS")
-notificationregion.textlabel:SetHorizontalAlign("CENTER")
-notificationregion.textlabel:SetLabel("")
-notificationregion.textlabel:SetFontHeight(48)
-notificationregion.textlabel:SetColor(255,255,255,190)
-
-
 ------------------------------------------------------------------
 local pagebutton=Region('region', 'pagebutton', UIParent)
 pagebutton:SetWidth(pagersize)
@@ -1340,4 +1448,4 @@ pagebutton.texture:SetGradientColor("BOTTOM",255,255,255,255,255,255,255,255)
 pagebutton.texture:SetBlendMode("BLEND")
 pagebutton.texture:SetTexCoord(0,1.0,0,1.0)
 pagebutton:EnableInput(true)
-pagebutton:Show()​
+pagebutton:Show()

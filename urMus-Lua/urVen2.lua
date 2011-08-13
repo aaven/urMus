@@ -1,38 +1,43 @@
 -- urVen2.lua
--- by Aaven, Jul 2011
--- based on urVen.lua
+-- By Aaven Jin, July-August 2011
+-- University of Michigan Ann Arbor
 
-SetPage(38)
+-- Components: 
+-- v1.backdrop v2.notification(not working) v3.hold button v4.color wheel v5.moving controller 
+-- v6.moving dialog v7.Menu class v8.menu function list v9.global menubar v10. Keyboard class 
+-- v11.edit/release mode v12.trashbin v13.anchorv v14.pagebutton
+
 FreeAllRegions()
+SetPage(38)
 DPrint("Welcome to urVen2 =)")
 
----------------- constant -------------------
+---------------- constants -------------------
 MIN_WIDTH_MENU = 100
 MAX_WIDTH_MENU = 200
 HEIGHT_MODE = 120
-
-STICK_MARGIN = 20
 HEIGHT_LINE = 30
+STICK_MARGIN = 20 -- auto-stick when two regions are within STICK_MARGIN
 
 local regions = {}
 local recycledregions = {}
+
 local auto_stick_enabled = 0
-local pics = {"vinyl.png","Ornament1.png","Pirate1.png","Play.png","Right.png"}
+local pics = {"vinyl.png","Ornament1.png","Pirate1.png","Play.png","Right.png"} -- for random pictures
 
 local moving_default_speed = "8" -- 3 to 10, slow to fast
-local moving_default_dir = "45" -- degree
-local boundary = {0,ScreenHeight(),0,ScreenWidth()} -- boundaries {minx,maxx,miny,maxy}
+local moving_default_dir = "45" -- direction by degree
+local boundary = {0,ScreenHeight(),0,ScreenWidth()} -- boundary coordinates to bounce from {minx,maxx,miny,maxy}
+local pboundary = {0,ScreenHeight(),0,ScreenWidth()} -- boundary coordinates for player regions to bounce from {minx,maxx,miny,maxy}
 
 local modes = {"EDIT","RELEASE"}
 local current_mode = modes[1]
 
-local pboundary = {0,ScreenHeight(),0,ScreenWidth()} -- boundaries {miny,maxy,minx,maxx}
-local margin_tile = 3
-
 local global_text_senders = {}
 local global_text_receiver = -1 -- currently global_text_receiver allows only one receiver
 
-local SixteenPositions = {} -- SixteenPositions(p1)(p2): ee:SetAnchor(p2,er,p1)
+local SixteenPositions = {} -- SixteenPositions(p1)(p2): stickee:SetAnchor(p2,sticker,p1)
+							-- divide a region into 4 parts, divide the remaining space into 12 parts
+							-- used for auto-stick checking
 function InitializeUrStick()  
     local k = 1
     for i = 1,4 do
@@ -58,13 +63,12 @@ end
 InitializeUrStick()
 
 ----------- global helper functions ------------
-
 function VSetTexture(v)
     v.t:SetSolidColor(v.r,v.g,v.b,v.a)
     v.t:SetTexture(v.bkg)
 end
 
-function VVSetTexture(newv,oldv)
+function VVSetTexture(newv,oldv) -- copy oldv's texture and blendmode to newv
     newv.r = oldv.r
     newv.g = oldv.g
     newv.b = oldv.b
@@ -74,52 +78,7 @@ function VVSetTexture(newv,oldv)
     VSetTexture(newv)
 end
 
-function Unstick(v)
-    output = ""
-    local er = v.sticker
-    local id = v.id
-    local flag = 0
-    if er ~= -1 then -- it is sticked to other
-        output = output.."a: "..v.sticker:Name().." releases "..v:Name()..". "
-        for k,ee in pairs(regions[er].stickee) do
-            if ee == id then
-                table.remove(regions[er].stickee,k)
-            end
-        end
-        v.sticker = -1
-        v:SetAnchor("BOTTOMLEFT",UIParent,"BOTTOMLEFT",0,0)
-        v:EnableMoving(true)
-        v:EnableInput(true)
-        v:EnableResizing(true)
-        v.group = id
-        flag = 1
-    end
-    if (#v.stickee > 0) then
-        output = output.."b: "..v:Name().." releases"
-        flag = 1
-        for k,ee in pairs(v.stickee) do -- other is sticked to it
-            output = output.." R#"..ee
-            regions[ee].sticker = -1
-            regions[ee]:SetAnchor("BOTTOMLEFT",UIParent,"BOTTOMLEFT",0,0)
-            regions[ee]:EnableMoving(true)
-            regions[ee]:EnableInput(true)
-            regions[ee]:EnableResizing(true)
-            regions[ee].group = regions[ee].id
-        end
-        while #v.stickee > 0 do
-            table.remove(v.stickee)
-        end
-    end
-    
-    if flag == 0 then
-        DPrint(v:Name().." nothing to unstick")
-    else
-        DPrint(output)
-    end
-end
-
-
-function Highlight(r)
+function Highlight(r) -- change color to highlight when the given region r is tapped
     r.t:SetSolidColor(100,100,100,255)
 end
 
@@ -127,7 +86,7 @@ function UnHighlight(r)
     r.t:SetSolidColor(200,200,200,255)
 end
 
-------- backdrop ------
+------------------ v1.backdrop ---------------------
 function TouchDown(self)
     if current_mode == modes[1] then
         CloseMenuBar()
@@ -169,7 +128,7 @@ function Leave(self)
 --    DPrint("LV")
 end
 
-function Move(self,x,y,dx,dy)
+function Move(self,x,y,dx,dy) -- in release mode, when backdrop receives OnMove signal, it moves regions in backdrop's player list within pboundary
     if current_mode == modes[2] then
         local player_w = 0
         local player_h = 0
@@ -233,9 +192,10 @@ backdrop:Handle("OnMove",Move)
 backdrop:EnableInput(true)
 backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
 backdrop:EnableClipping(true)
-backdrop.player = {}
+backdrop.player = {} -- store the ids of player regions that need backdrop's OnMove signal
 
------------- notification component set --------------
+---------------- v2.notification component set -------------------
+-- TODO i tried with ShowNotification(note) but nothing shows up
 function FadeNotification(self, elapsed)
     if self.staytime > 0 then
         self.staytime = self.staytime - elapsed
@@ -276,7 +236,8 @@ notificationregion.textlabel:SetLabel("")
 notificationregion.textlabel:SetFontHeight(48)
 notificationregion.textlabel:SetColor(255,255,255,190)
 
------------- hold button ------------
+----------- v3.hold button -------------
+-- enable to select multiple regions for the same menu option
 function HoldButtonHold(self)
     self.held = 1
     DPrint("Hold button is ON. You can select multiple regions now.")
@@ -300,11 +261,11 @@ hold_button:Handle("OnTouchUp",HoldButtonRelease)
 hold_button:SetAnchor("LEFT",UIParent,"LEFT")
 hold_button.held = 0
 
-------------  color wheel -------------
-color_w = 256
-color_h = 256
-color_x = 0
-color_y = 0
+------------  v4.color wheel -------------
+local color_w = 256
+local color_h = 256
+local color_x = 0
+local color_y = 0
 
 function UpdateColor(self,x,y,dx,dy)
     local xx = (x+dx-color_x)*1530/color_w
@@ -355,7 +316,7 @@ end
 
 local color_wheel = Region('region','colorwheel',UIParent)
 color_wheel.t = color_wheel:Texture()
-color_wheel.t:SetTexture('color_map.png')--255,255,255,255
+color_wheel.t:SetTexture('color_map.png')
 color_wheel:SetWidth(color_w)
 color_wheel:SetHeight(color_h)
 color_wheel:SetAnchor("BOTTOMLEFT",UIParent,"BOTTOMLEFT",color_x,color_y)
@@ -366,9 +327,11 @@ color_wheel:EnableResizing(false)
 color_wheel:Handle("OnMove",UpdateColor)
 color_wheel:Handle("OnDoubleTap",CloseColorWheel)
 
------------------ move controller --------------------
+----------------- v5.moving controller --------------------
+-- moving controller is a clickable region to move its specified caller region
 local move_step = 10
 local move_holdtime = 0.01
+
 function ControllerTouchDown(self)
     CloseSharedStuff(self.caller)
     if current_mode == modes[2] then
@@ -488,7 +451,7 @@ function TriggerDown(self,e)
     end
 end
 
-function ControllerTouchDownLeft(self)
+function ControllerTouchDownLeft(self) -- event for OnTouchDown of the controller
     ControllerTouchDown(self)
     MoveLeft(self)
     self:Handle("OnUpdate",TriggerLeft)
@@ -532,7 +495,166 @@ function CreateController()
     return controller
 end
 
------------- Menu Class -------------
+---------------------- v6.moving dialog --------------------------
+function CreateOptions(txt,w)
+    local r = Region('region','dialog',UIParent)
+    r.tl = r:TextLabel()
+    r.tl:SetLabel(txt)
+    r.tl:SetFontHeight(16)
+    r.tl:SetColor(0,0,0,255) 
+    r.tl:SetHorizontalAlign("JUSTIFY")
+    r.tl:SetShadowColor(255,255,255,255)
+    r.tl:SetShadowOffset(1,1)
+    r.tl:SetShadowBlur(1)
+    r.t = r:Texture(200,200,200,255)
+    r:SetWidth(w)
+    r:SetHeight(50)
+    return r
+end
+
+function CloseMyDialog(self)
+    self.title:Hide()
+    for i = 1,#self.hint do
+        self[i][1]:Hide()
+        self[i][2]:Hide()
+        self[i][2]:EnableInput(false)
+    end
+    
+    self[#self.hint][1]:EnableInput(false)
+    mykb:Hide()
+    self.ready = 0
+    backdrop:EnableInput(true)
+end
+
+function OKclicked(self)
+    local dd = self.parent
+    d1 = tonumber(dd[1][2].tl:Label())
+    d2 = tonumber(dd[2][2].tl:Label())
+    if d1 <= 0 or d1 >= 13 then
+        DPrint("Speed must be in the range (0,13]")
+        return
+    end
+    if d2 >= 360 or d2 < 0 then
+        DPrint("Direction must be in the range [0,360)")
+        return
+    end
+
+    local region = dd.caller
+    local deg = d2 * math.pi / 180
+    region.speed = d1
+    region.dy = d1*math.sin(deg)
+    region.dx = d1*math.cos(deg)
+    region.bounceobjects = dd.bounceobjects
+    region.bounceremoveobjects = dd.bounceremoveobjects
+    region.bound = boundary 
+
+    CloseMyDialog(self.parent)
+    StartMoving(region,0)
+end
+
+function CANCELclicked(self)
+    CloseMyDialog(self.parent)
+end
+
+function SelectBounceObject(self)
+    self.parent.bouncetype = 0
+    if self.parent.bounceobjects.dirty == 0 then
+        self.parent[3][2].tl:SetLabel("")
+    end
+end
+
+function SelectBounceObjectRemove(self)
+    self.parent.bouncetype = 1
+    if self.parent.bounceremoveobjects.dirty == 0 then
+        self.parent[4][2].tl:SetLabel("")
+    end
+end
+
+function OpenOrCloseNumericKeyboard(self)
+    if mykb.open == 0 then 
+        mykb.typingarea = self
+        CloseColorWheel(color_wheel)
+        DPrint("to open")
+        mykb:Show(3)
+        backdrop:SetClipRegion(0,mykb.h,ScreenWidth(),ScreenHeight())
+    else 
+        DPrint("to close")
+        mykb:Hide()
+        backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
+    end
+end
+
+local mydialog = {}
+mydialog.title = Region('region','dialog',UIParent)
+mydialog.title.t = mydialog.title:Texture(240,240,240,255)
+mydialog.title.tl = mydialog.title:TextLabel()
+mydialog.title.tl:SetLabel("Move! Touch the region to stop moving.")
+mydialog.title.tl:SetFontHeight(16)
+mydialog.title.tl:SetColor(0,0,0,255) 
+mydialog.title.tl:SetHorizontalAlign("JUSTIFY")
+mydialog.title.tl:SetShadowColor(255,255,255,255)
+mydialog.title.tl:SetShadowOffset(1,1)
+mydialog.title.tl:SetShadowBlur(1)
+mydialog.title:SetWidth(400)
+mydialog.title:SetHeight(50)
+mydialog.title:SetAnchor("CENTER",UIParent,"CENTER")
+mydialog.hint = {{"speed (1 to 13, slow to fast)",moving_default_speed},{"direction (degrees)",moving_default_dir},{"select objects to bounce from","click here"},{"select objects to bounce from and remove","click here"},{"OK","CANCEL"}}
+mydialog.bounceobjects = {}
+mydialog.bounceremoveobjects = {}
+mydialog.bouncetype = 0 -- 1:remove after bounce, 0:just bounce
+mydialog.ready = 0
+mydialog.caller = nil
+for i = 1,#mydialog.hint do
+    mydialog[i] = {}
+    mydialog[i][1] = CreateOptions(mydialog.hint[i][1],250)
+    mydialog[i][2] = CreateOptions(mydialog.hint[i][2],150)
+    mydialog[i][2]:SetAnchor("LEFT",mydialog[i][1],"RIGHT")
+    mydialog[i][1].parent = mydialog
+    mydialog[i][2].parent = mydialog
+end
+mydialog[1][2]:Handle("OnTouchDown",OpenOrCloseNumericKeyboard)
+mydialog[2][2]:Handle("OnTouchDown",OpenOrCloseNumericKeyboard)
+mydialog[3][2]:Handle("OnTouchDown",SelectBounceObject)
+mydialog[4][2]:Handle("OnTouchDown",SelectBounceObjectRemove)
+mydialog[5][1]:Handle("OnTouchDown",OKclicked)
+mydialog[5][2]:Handle("OnTouchDown",CANCELclicked)
+
+mydialog[1][1]:SetAnchor("TOPLEFT",mydialog.title,"BOTTOMLEFT")
+for i = 2,#mydialog.hint do
+    mydialog[i][1]:SetAnchor("TOPLEFT",mydialog[i-1][1],"BOTTOMLEFT")
+end
+
+function OpenMyDialog(v)
+    mydialog.title:Show()
+    mydialog.title:MoveToTop()
+    mydialog.caller = v
+    DPrint(v:Name())
+    while #mydialog.bounceobjects > 0 do
+        table.remove(mydialog.bounceobjects)
+    end
+    while #mydialog.bounceremoveobjects > 0 do
+        table.remove(mydialog.bounceremoveobjects)
+    end
+    mydialog[1][2].tl:SetLabel(mydialog.hint[1][2])
+    mydialog[2][2].tl:SetLabel(mydialog.hint[2][2])
+    mydialog[3][2].tl:SetLabel(mydialog.hint[3][2])
+    mydialog[4][2].tl:SetLabel(mydialog.hint[4][2])
+    for i = 1,#mydialog.hint do
+        mydialog[i][1]:Show()
+        mydialog[i][2]:Show()
+        mydialog[i][1]:MoveToTop()
+        mydialog[i][2]:MoveToTop()
+        mydialog[i][2]:EnableInput(true)
+    end
+    mydialog[#mydialog.hint][1]:EnableInput(true)
+    mydialog.ready = 1
+    mydialog.bouncetype = 0
+    mydialog.bounceobjects.dirty = 0
+    mydialog.bounceremoveobjects.dirty = 0
+    backdrop:EnableInput(false)
+end
+
+------------ v7.Menu class -------------
 Menu = {}
 Menu.__index = Menu
 function Menu:OpenMenu() 
@@ -577,24 +699,25 @@ function Menu:MoveMenuToTop()
     end
 end
 
-function OpenOrCloseMenu(self)
-    if self.menu.open == 0 then
+function OpenOrCloseMenu(v)
+    if v.menu.open == 0 then
         DPrint("open option")
-        self.menu:OpenMenu()
+        v.menu:OpenMenu()
     else 
         DPrint("close option")
-        self.menu:CloseMenu()
+        v.menu:CloseMenu()
     end
 end
 
 function OptEventFunc(self)
-    -- close other opened option
     Highlight(self)
+    -- first close other opened menu options
     if self.parent.openopt ~= self.k and self.parent.openopt ~= -1 and #self.parent[self.parent.openopt].menu > 0 then
         self.parent[self.parent.openopt].menu:CloseMenu()
     end
+    
     self.parent.openopt = self.k
-    if self.func == OpenOrCloseMenu then
+    if self.func == OpenOrCloseMenu then -- when there is sub-menu
         OpenOrCloseMenu(self)
     else
         for k,i in pairs (self.boss.selectedregions) do
@@ -603,7 +726,7 @@ function OptEventFunc(self)
     end
 end
 
-function Menu:CreateOption(pair)
+function Menu:CreateOption(pair) -- pair: see how function_list and each menu are created
     local opt = Region() 
     opt.parent = self
     opt.menu = {}
@@ -634,9 +757,9 @@ function Menu:CreateOption(pair)
     return opt
 end
 
-function Menu.Create(region,background,list,anchor,relanchor)
--- side:left or right or inside. offsets are for menu position
-    
+function Menu.Create(region,background,list,anchor,relanchor) 
+-- list: see how function_list and each menu are created
+-- anchor and relanchor are anchor positions for the menu relative to region
     local menu = {}
     setmetatable(menu,Menu)
     menu.w = MIN_WIDTH_MENU
@@ -655,7 +778,7 @@ function Menu.Create(region,background,list,anchor,relanchor)
         end
     end
     
-    if len >= 20 then -- TODO too long name cant be displayed
+    if len >= 20 then -- too long a name will be cut
         menu.w = MAX_WIDTH_MENU
     elseif len > 10 then
         menu.w = len*10
@@ -676,155 +799,59 @@ function Menu.Create(region,background,list,anchor,relanchor)
     return menu
 end
 
-
-------------- menu functions, call by menu option --------------
+------------- menu helper functions and events --------------
 text_size_list = {"8","10","12","14","16","20","24","28","32","36"}
 text_position_list = {"top left","top center","top right","middle left","middle center","middle right","bottom left","bottom center","bottom right"}
 text_position_hor_list = {"LEFT","CENTER","RIGHT","LEFT","CENTER","RIGHT","LEFT","CENTER","RIGHT"}
 text_position_ver_list = {"TOP","TOP","TOP","MIDDLE","MIDDLE","MIDDLE","BOTTOM","BOTTOM","BOTTOM"}
 blend_mode_list = {"DISABLED", "BLEND", "ALPHAKEY", "ADD", "MOD", "SUB"}
 
-function MenuAbout(opt,vv)
-    output = vv:Name()..", sticker #"..vv.sticker..", stickees"
-    if #vv.stickee == 0 then
-        output = output.." #-1"
-    else
-        for i = 1,#vv.stickee do
-            output = output.." #"..vv.stickee[i]
-        end
-    end
-    DPrint(output)
-end
-
-function MenuPictureRandomly(opt,vv)
-    vv.bkg = pics[math.random(1,5)]
-    vv.t:SetTexture(vv.bkg)
-    DPrint(vv:Name().." background pic: "..vv.bkg)
-end
-
-function MenuColorRandomly(opt,vv)
-    DPrint(vv:Name().." change color")
-    vv.r = math.random(0,255)
-    vv.g = math.random(0,255)
-    vv.b = math.random(0,255)
-    vv.a = math.random(0,255)
-    vv.t:SetSolidColor(vv.r,vv.g,vv.b,vv.a)
-end
-
-function MenuClearToWhite(opt,vv)
-    DPrint(vv:Name().." clear to white")
-    vv.r = 255
-    vv.g = 255
-    vv.b = 255
-    vv.a = 255
-    vv.bkg = ""
-    vv.t:SetTexture(255,255,255,255)
-end
-
-function MenuUnstick(opt,vv)
-    Unstick(vv)
-    UnHighlight(opt)
-    CloseMenuBar()
-end
-
-function MenuRecycleSelf(opt,vv) -- remove v
-    Unstick(vv)
-    
-    if vv.text_sharee ~= -1 then
-        for k,i in pairs(global_text_senders) do
-            if i == vv.id then
-                table.remove(global_text_senders,k)
+function Unstick(v)
+    output = ""
+    local er = v.sticker
+    local id = v.id
+    local flag = 0
+    if er ~= -1 then -- it is sticked to other
+        output = output.."a: "..v.sticker:Name().." releases "..v:Name()..". "
+        for k,ee in pairs(regions[er].stickee) do
+            if ee == id then
+                table.remove(regions[er].stickee,k)
             end
         end
-        regions[vv.text_sharee].text_sharee = -1
+        v.sticker = -1
+        v:SetAnchor("BOTTOMLEFT",UIParent,"BOTTOMLEFT",0,0)
+        v:EnableMoving(true)
+        v:EnableInput(true)
+        v:EnableResizing(true)
+        v.group = id
+        flag = 1
     end
-    PlainVRegion(vv)
-    vv:EnableInput(false)
-    vv:EnableMoving(false)
-    vv:EnableResizing(false)
-    vv:Hide()
-    vv.usable = 0
-
-    table.insert(recycledregions, vv.id)
-    DPrint(vv:Name().." removed")
+    if (#v.stickee > 0) then
+        output = output.."b: "..v:Name().." releases"
+        flag = 1
+        for k,ee in pairs(v.stickee) do -- other is sticked to it
+            output = output.." R#"..ee
+            regions[ee].sticker = -1
+            regions[ee]:SetAnchor("BOTTOMLEFT",UIParent,"BOTTOMLEFT",0,0)
+            regions[ee]:EnableMoving(true)
+            regions[ee]:EnableInput(true)
+            regions[ee]:EnableResizing(true)
+            regions[ee].group = regions[ee].id
+        end
+        while #v.stickee > 0 do
+            table.remove(v.stickee)
+        end
+    end
     
-    UnHighlight(opt)
-    CloseMenuBar()
-end
-
-function MenuStickControl(opt,vv)
-    if auto_stick_enabled == 1 then
-        DPrint("AutoStick disabled")
-        auto_stick_enabled = 0
+    if flag == 0 then
+        DPrint(v:Name().." nothing to unstick")
     else
-        DPrint("AutoStick enabled")
-        auto_stick_enabled = 1
+        DPrint(output)
     end
 end
 
-function MenuDuplicate(opt,oldv)
-    local newv = CreateorRecycleregion('region', 'backdrop', UIParent)
-    -- size
-    newv:SetWidth(oldv:Width())
-    newv:SetHeight(oldv:Height())
-    -- color
-    VVSetTexture(newv,oldv)
-    -- text 
-    newv.tl:SetFontHeight(oldv.tl:FontHeight())
-    newv.tl:SetHorizontalAlign(oldv.tl:HorizontalAlign())
-    newv.tl:SetVerticalAlign(oldv.tl:VerticalAlign())
-    newv.tl:SetLabel(newv.tl:Label())
-    -- position
-    local x,y = oldv:Center()
-    local h = 10 + oldv:Height()
-    newv:Show()
-    newv:SetAnchor("CENTER",x,y-h)
-    DPrint(newv.tl:Label().." Color: ("..newv.r..", "..newv.g..", "..newv.b..", "..newv.a.."). Background pic: "..newv.bkg..". Blend mode: "..newv.t:BlendMode())
-    --UnHighlight(self)
-    --CloseMenuBar()
-    return newv
-end
-
-function MenuTextSize(opt,vv)
-    DPrint("change font: "..text_size_list[opt.k])
-    vv.tl:SetFontHeight(tonumber(text_size_list[opt.k]) * 5/3)
-    vv.tl:SetLabel(vv.tl:Label())
-end
-
-function MenuTextPosition(opt,vv)
-    vv.tl:SetHorizontalAlign(text_position_hor_list[opt.k])
-    vv.tl:SetVerticalAlign(text_position_ver_list[opt.k])
-    vv.tl:SetLabel(vv.tl:Label())
-end
-
-function MenuText(opt,vv)
-    DPrint("Current text size: " .. vv.tl:FontHeight() .. ", position: " .. vv.tl:VerticalAlign() .. " & " .. vv.tl:HorizontalAlign())
-end
-
-function MenuChangeColor(opt,vv)
-    color_wheel:Show()
-    color_wheel.region = vv
-    color_wheel:EnableInput(true)
-    UnHighlight(opt)
-    CloseMenuBar()
-end
-
-function MenuTransparency(opt,vv)
-    DPrint("Current blend mode: " .. vv.t:BlendMode())
-end
-
-function MenuBlendMode(opt,vv)
-    DPrint("Change to blend mode: " .. blend_mode_list[opt.k])
-    vv.t:SetBlendMode(blend_mode_list[opt.k])
-end
-
-function MenuMoving(opt,vv)
-    OpenMyDialog(vv)
-    UnHighlight(opt)
-    CloseMenuBar()
-end
-
-function TouchObject(r,other)
+function TouchObject(r,other) -- when r is moving, check whether r is about to touch the "other"
+								-- if yes, let r touch the "other", and change dx or dy and r's moving direction
     local bb = r:Bottom() + r.dy
     local tt = r:Top() + r.dy
     local ll = r:Left() + r.dx
@@ -841,26 +868,55 @@ function TouchObject(r,other)
             r.y = r.y + t2 - bb + r.dy
             r.dy = math.abs(r.dy)
             r.touch = "bottom"
+ 	       if r.dx < 0 then
+    	        r.dir = (r.dir - 90)%360
+        	elseif r.dx > 0 then
+            	r.dir = (r.dir + 90)%360
+	        else
+    	        r.dir = (r.dir - 180)%360
+        	end
         elseif ll <= r2 and rr >= r2 and r:Left() >= r2 then
             DPrint("left")
             r.x = r.x + r2 - ll + r.dx
             r.dx = math.abs(r.dx)
             r.touch = "left"
+	        if r.dy < 0 then
+    	        r.dir = (r.dir + 90)%360
+        	elseif r.dy > 0 then
+            	r.dir = (r.dir - 90)%360
+	        else
+    	        r.dir = (r.dir - 180)%360
+        	end
         elseif tt >= b2 and bb <= b2 and r:Top() <= b2 then
             DPrint("top")
             r.y = r.y + b2 - tt + r.dy
             r.dy = -math.abs(r.dy)
             r.touch = "top"
+	        if r.dx < 0 then
+    	        r.dir = (r.dir + 90)%360
+        	elseif r.dx > 0 then
+            	r.dir = (r.dir - 90)%360
+	        else
+    	        r.dir = (r.dir - 180)%360
+        	end
         elseif rr >= l2 and ll <= l2 and r:Right() <= l2 then
             DPrint("right")
             r.x = r.x + l2- rr + r.dx
             r.dx = -math.abs(r.dx)
             r.touch = "right"
+	        if r.dy < 0 then
+    	        r.dir = (r.dir - 90)%360
+        	elseif r.dy > 0 then
+            	r.dir = (r.dir + 90)%360
+	        else
+    	        r.dir = (r.dir - 180)%360
+        	end
         end
     end
 end
 
-function TouchBound(r)
+function TouchBound(r) -- when r is moving, check whether r is about to touch its bound
+						-- if yes, let r touch the bound, and change dx or dy and r's moving direction
     if r:Bottom() + r.dy <= r.bound[1] then
         DPrint("bottom")
         r.y = r.y + r.bound[1] - r:Bottom()
@@ -912,7 +968,7 @@ function TouchBound(r)
     end
 end
 
-function StartMovingEvent(r,e)
+function StartMovingEvent(r,e) -- event called with signal OnUpdate. parameters for r are set in StartMoving
     if r.touch ~= "none" then
         r.x = r.x + r.dx
         r.y = r.y + r.dy
@@ -967,7 +1023,7 @@ function StartMovingEvent(r,e)
     r:SetAnchor("CENTER",r.x,r.y)
 end
 
-function StartMoving(vv,random)
+function StartMoving(vv,random) -- set parameters for region vv to move. with random as 1, vv flies in random directions
     vv.x,vv.y = vv:Center()
     vv.moving = 1
     vv.touch = "none"
@@ -980,6 +1036,170 @@ function StartMoving(vv,random)
     vv.eventlist["OnUpdate"].currentevent = StartMovingEvent
     vv:Handle("OnUpdate",nil)
     vv:Handle("OnUpdate",VUpdate)
+end
+
+function SelfColor(self,e)
+    self.colortime = self.colortime - e
+    if self.colortime <= 0 then
+        self.r = math.random(0,255)
+        self.g = math.random(0,255)
+        self.b = math.random(0,255)
+        self.a = math.random(0,255)
+        VSetTexture(self)
+        self.colortime = 1
+    end
+end
+
+function TextSharing(self)
+    if self.is_text_sender == 1 then
+        if self.text_sharee ~= -1 then
+            regions[self.text_sharee].text_sharee = self.id
+            regions[self.text_sharee].tl:SetLabel(self.tl:Label())
+        end
+    end
+end
+
+------------- menu functions --------------
+-- called by menu option, named starting with Menu-
+-- arguments (opt,vv): opt is menu option region, vv is the region that functions should be implemented on
+
+function MenuAbout(opt,vv)
+    output = vv:Name()..", sticker #"..vv.sticker..", stickees"
+    if #vv.stickee == 0 then
+        output = output.." #-1"
+    else
+        for i = 1,#vv.stickee do
+            output = output.." #"..vv.stickee[i]
+        end
+    end
+    DPrint(output)
+end
+
+function MenuPictureRandomly(opt,vv)
+    vv.bkg = pics[math.random(1,5)]
+    vv.t:SetTexture(vv.bkg)
+    DPrint(vv:Name().." background pic: "..vv.bkg)
+end
+
+function MenuColorRandomly(opt,vv)
+    DPrint(vv:Name().." change color")
+    vv.r = math.random(0,255)
+    vv.g = math.random(0,255)
+    vv.b = math.random(0,255)
+    vv.a = math.random(0,255)
+    vv.t:SetSolidColor(vv.r,vv.g,vv.b,vv.a)
+end
+
+function MenuClearToWhite(opt,vv)
+    DPrint(vv:Name().." clear to white")
+    vv.r = 255
+    vv.g = 255
+    vv.b = 255
+    vv.a = 255
+    vv.bkg = ""
+    vv.t:SetTexture(255,255,255,255)
+end
+
+function MenuUnstick(opt,vv)
+    Unstick(vv)
+    UnHighlight(opt)
+    CloseMenuBar()
+end
+
+function MenuRecycleSelf(opt,vv)
+    Unstick(vv)
+    
+    if vv.text_sharee ~= -1 then
+        for k,i in pairs(global_text_senders) do
+            if i == vv.id then
+                table.remove(global_text_senders,k)
+            end
+        end
+        regions[vv.text_sharee].text_sharee = -1
+    end
+    PlainVRegion(vv)
+    vv:EnableInput(false)
+    vv:EnableMoving(false)
+    vv:EnableResizing(false)
+    vv:Hide()
+    vv.usable = 0
+
+    table.insert(recycledregions, vv.id)
+    DPrint(vv:Name().." removed")
+    
+    UnHighlight(opt)
+    CloseMenuBar()
+end
+
+function MenuStickControl(opt,vv)
+    if auto_stick_enabled == 1 then
+        DPrint("AutoStick disabled")
+        auto_stick_enabled = 0
+    else
+        DPrint("AutoStick enabled")
+        auto_stick_enabled = 1
+    end
+end
+
+function MenuDuplicate(opt,oldv)
+    local newv = CreateorRecycleregion('region', 'backdrop', UIParent)
+    -- size
+    newv:SetWidth(oldv:Width())
+    newv:SetHeight(oldv:Height())
+    -- color
+    VVSetTexture(newv,oldv)
+    -- text 
+    newv.tl:SetFontHeight(oldv.tl:FontHeight())
+    newv.tl:SetHorizontalAlign(oldv.tl:HorizontalAlign())
+    newv.tl:SetVerticalAlign(oldv.tl:VerticalAlign())
+    newv.tl:SetLabel(newv.tl:Label())
+    -- position
+    local x,y = oldv:Center()
+    local h = 10 + oldv:Height()
+    newv:Show()
+    newv:SetAnchor("CENTER",x,y-h)
+    DPrint(newv.tl:Label().." Color: ("..newv.r..", "..newv.g..", "..newv.b..", "..newv.a.."). Background pic: "..newv.bkg..". Blend mode: "..newv.t:BlendMode())
+    
+    return newv
+end
+
+function MenuTextSize(opt,vv)
+    DPrint("change font: "..text_size_list[opt.k])
+    vv.tl:SetFontHeight(tonumber(text_size_list[opt.k]) * 5/3)
+    vv.tl:SetLabel(vv.tl:Label())
+end
+
+function MenuTextPosition(opt,vv)
+    vv.tl:SetHorizontalAlign(text_position_hor_list[opt.k])
+    vv.tl:SetVerticalAlign(text_position_ver_list[opt.k])
+    vv.tl:SetLabel(vv.tl:Label())
+end
+
+function MenuText(opt,vv)
+    DPrint("Current text size: " .. vv.tl:FontHeight() .. ", position: " .. vv.tl:VerticalAlign() .. " & " .. vv.tl:HorizontalAlign())
+end
+
+function MenuChangeColor(opt,vv)
+    color_wheel:Show()
+    color_wheel.region = vv
+    color_wheel:EnableInput(true)
+    UnHighlight(opt)
+    CloseMenuBar()
+end
+
+function MenuTransparency(opt,vv)
+    DPrint("Current blend mode: " .. vv.t:BlendMode())
+end
+
+function MenuBlendMode(opt,vv)
+    DPrint("Change to blend mode: " .. blend_mode_list[opt.k])
+    vv.t:SetBlendMode(blend_mode_list[opt.k])
+end
+
+function MenuMoving(opt,vv)
+    OpenMyDialog(vv)
+    UnHighlight(opt)
+    CloseMenuBar()
 end
 
 function MenuSelfFly(opt,vv)
@@ -997,7 +1217,7 @@ function MenuSelfFly(opt,vv)
     CloseMenuBar()
 end
 
-function SelfShowHide(self,e)
+function SelfShowHideEvent(self,e) -- event called with OnUpdate
     self.showtime = self.showtime - e
     if self.showtime <= 0 then
         if self:IsShown() then
@@ -1009,30 +1229,18 @@ function SelfShowHide(self,e)
     end
 end
 
-function MenuSelfShowHide(opt,vv)
+function MenuSelfShowHide(opt,vv) 
     vv.showtime = math.random(1,4)/2
     if vv.eventlist["OnUpdate"]["selfshowhide"] == 0 then
-        table.insert(vv.eventlist["OnUpdate"],SelfShowHide)
+        table.insert(vv.eventlist["OnUpdate"],SelfShowHideEvent)
         vv.eventlist["OnUpdate"]["selfshowhide"] = 1
     end
-    vv.eventlist["OnUpdate"].currentevent = SelfShowHide
+    vv.eventlist["OnUpdate"].currentevent = SelfShowHideEvent
     vv:Handle("OnUpdate",nil)
     vv:Handle("OnUpdate",VUpdate)
     DPrint(vv:Name().." randomly shows and hides. Click it to stop.")
     UnHighlight(opt)
     CloseMenuBar()
-end
-
-function SelfColor(self,e)
-    self.colortime = self.colortime - e
-    if self.colortime <= 0 then
-        self.r = math.random(0,255)
-        self.g = math.random(0,255)
-        self.b = math.random(0,255)
-        self.a = math.random(0,255)
-        VSetTexture(self)
-        self.colortime = 1
-    end
 end
 
 function MenuSelfColor(opt,vv)
@@ -1049,7 +1257,7 @@ function MenuSelfColor(opt,vv)
     CloseMenuBar()
 end
 
-function MenuStartPlayerLeft(opt,vv)
+function MenuStartPlayerLeft(opt,vv) -- this set of 4 functions are for player regions to stick to pboundary when OnMove signal is received by backdrop in release mode
     backdrop.player["left"] = vv
     vv:SetAnchor("LEFT",pboundary[3],(pboundary[2]+pboundary[1])/2)
     UnHighlight(opt)
@@ -1094,7 +1302,7 @@ function MenuMoveController(opt,vv)
     DPrint("Use a controller to control the move direction of "..vv:Name())
 end
 
-function MenuControllerLeft(opt,vv)
+function MenuControllerLeft(opt,vv) -- this set of 4 functions are for moving controllers
     if vv.left_controller == nil then
         controller = CreateController()
         controller.t = controller:Texture('left.png')
@@ -1152,15 +1360,6 @@ function MenuGlobalTextSharing(opt,vv)
     end
 end
 
-function TextSharing(self)
-    if self.is_text_sender == 1 then
-        if self.text_sharee ~= -1 then
-            regions[self.text_sharee].text_sharee = self.id
-            regions[self.text_sharee].tl:SetLabel(self.tl:Label())
-        end
-    end
-end
-
 function MenuSetGlobalTextSender(opt,vv)
     if vv.is_text_sender == 0 then
         vv.is_text_sender = 1
@@ -1191,7 +1390,9 @@ function MenuSetGlobalTextReceiver(opt,vv) -- not checking duplicates
     CloseMenuBar()
 end
 
-------------------- user customized data/functions ------------------
+------------------- v8.menu function list ------------------
+-- function_list[i] = {"menubar optoin label", {func_list}} where func_list:
+-- func_list[i] = {"menu option label", event, {func_list for sub-menu}
 function_list = {}
 
 function_list[1] = {"Try me", {
@@ -1268,8 +1469,9 @@ function_list[2] = {"Game!", {
                             }
                     }
                     
------------- menu bar events ------------
-function OpenOrCloseMenubarItem(self) -- call by menubar(i) 
+
+------------ v9.global menubar -------------
+function OpenOrCloseMenubarItemEvent(self) -- call by menubar[i]
     local bar = self.boss
     if self.menu.open == 0 then
         if bar.openmenu ~= -1 then
@@ -1285,7 +1487,6 @@ function OpenOrCloseMenubarItem(self) -- call by menubar(i)
     end
 end
 
------------- global menu -------------
 local menubar = {}
 menubar.menus = function_list
 menubar.v = nil -- caller v
@@ -1312,7 +1513,7 @@ for k,name in pairs (menubar.menus) do
     r:EnableInput(false)
     r:EnableMoving(false)
     r:EnableResizing(false)
-    r:Handle("OnTouchDown",OpenOrCloseMenubarItem)
+    r:Handle("OnTouchDown",OpenOrCloseMenubarItemEvent)
     menubar[k] = r
 end
 
@@ -1323,7 +1524,7 @@ for i=2,#menubar do
 end
 menubar[1]:Hide()
 
------------ keyboard ------------
+----------- v10.Keyboard class ------------
 local key_margin = 5
 local key_w = (ScreenWidth() - key_margin * 11) / 10
 local key_h = key_w * 0.9
@@ -1349,48 +1550,6 @@ function KeyTouchUp(self)
     UnHighlight(self)
 end
 
-function Keyboard:CreateKey(ch1,ch2,ch3,w)
-    local key = Region('region', 'key', UIParent)
-    key.parent = self
-    key.faces = {ch1,ch2,ch3} -- 1: low case, 2: upper case, 3: back number
-    key.t = key:Texture(200,200,200,255)
-    key.tl = key:TextLabel()
-    key.tl:SetLabel(ch1)
-    key.tl:SetFontHeight(20)
-    key.tl:SetColor(0,0,0,255) 
-    key.tl:SetHorizontalAlign("JUSTIFY")
-    key.tl:SetShadowColor(255,255,255,255)
-    key.tl:SetShadowOffset(1,1)
-    key.tl:SetShadowBlur(1)
-    key:SetHeight(key_h)
-    key:SetWidth(w)
-    key:Handle("OnTouchDown",KeyTouchDown)
-    key:Handle("OnTouchUp",KeyTouchUp)
-    key:Handle("OnLeave",KeyTouchUp)
-    return key
-end
-
-function Keyboard:CreateKBLine(str1,str2,str3,line,w) -- as a private function, do not use outside class, only called by Keyboard.Create
-    self[line] = {}
-    self[line].num = string.len(str1)
-    self[line][1] = self:CreateKey(string.char(str1:byte(1)),string.char(str2:byte(1)),string.char(str3:byte(1)),w)
-    
-    for i=2,self[line].num do
-        self[line][i] = self:CreateKey(string.char(str1:byte(i)),string.char(str2:byte(i)),string.char(str3:byte(i)),w)
-        self[line][i]:SetAnchor("TOPLEFT",self[line][i-1],"TOPRIGHT",key_margin,0)
-    end
-end
-
-function Keyboard:UpdateFaces(face)
-    self.face = face
-    for i = 1,4 do
-        for j = 1,#self[i] do
-            self[i][j].tl:SetLabel(self[i][j].faces[face])
-        end
-    end
-    UnHighlight(self[3][10])
-end
-
 function KeyTouchDownShift(self)
     if self.parent.face == 1 then
         DPrint("1")
@@ -1403,7 +1562,7 @@ function KeyTouchDownShift(self)
     end
 end
 
-function KeyTouchDownFlip(self)
+function KeyTouchDownFlip(self) -- event for switching number/alphabet mode 
     Highlight(self)
     if self.parent.face == 3 then
         self.parent:UpdateFaces(1)
@@ -1426,13 +1585,57 @@ function KeyTouchDownClear(self)
     self.parent.typingarea.tl:SetLabel("")
 end
 
+function Keyboard:CreateKey(ch1,ch2,ch3,w)
+    local key = Region('region', 'key', UIParent)
+    key.parent = self
+    key.faces = {ch1,ch2,ch3} -- 1: low case, 2: upper case, 3: back number
+    key.t = key:Texture(200,200,200,255)
+    key.tl = key:TextLabel()
+    key.tl:SetLabel(ch1)
+    key.tl:SetFontHeight(20)
+    key.tl:SetColor(0,0,0,255) 
+    key.tl:SetHorizontalAlign("JUSTIFY")
+    key.tl:SetShadowColor(255,255,255,255)
+    key.tl:SetShadowOffset(1,1)
+    key.tl:SetShadowBlur(1)
+    key:SetHeight(key_h)
+    key:SetWidth(w)
+    key:Handle("OnTouchDown",KeyTouchDown)
+    key:Handle("OnTouchUp",KeyTouchUp)
+    key:Handle("OnLeave",KeyTouchUp)
+    return key
+end
+
+function Keyboard:CreateKBLine(str1,str2,str3,line,w) -- as a private function for initialization, only called by Keyboard.Create()
+													-- str1, str2, str3 each is a string on a whole line of keyboard
+													-- str1 is lower case, str2 is upper case, str3 is number and symbol
+    self[line] = {}
+    self[line].num = string.len(str1)
+    self[line][1] = self:CreateKey(string.char(str1:byte(1)),string.char(str2:byte(1)),string.char(str3:byte(1)),w)
+    
+    for i=2,self[line].num do
+        self[line][i] = self:CreateKey(string.char(str1:byte(i)),string.char(str2:byte(i)),string.char(str3:byte(i)),w)
+        self[line][i]:SetAnchor("TOPLEFT",self[line][i-1],"TOPRIGHT",key_margin,0)
+    end
+end
+
+function Keyboard:UpdateFaces(face) -- update the character on a key when Shift key is hit or number/alphabet mode is switched
+    self.face = face
+    for i = 1,4 do
+        for j = 1,#self[i] do
+            self[i][j].tl:SetLabel(self[i][j].faces[face])
+        end
+    end
+    UnHighlight(self[3][10])
+end
+
 function Keyboard.Create(area)
     local kb = {}
     setmetatable(kb, Keyboard)
     kb.open = 0
     kb.typingarea = area
     kb.w = ScreenWidth()
-    kb.face = 1 -- 1: low case, 2: upper case, 3: back number
+    kb.face = 1 -- 1: low case, 2: upper case, 3: numbers and symbols
     kb:CreateKBLine("qwertyuiop","QWERTYUIOP","1234567890",1,key_w)
     kb:CreateKBLine("asdfghjkl","ASDFGHJKL","-/:;()$&@",2,key_w)
     kb:CreateKBLine("zxcvbnm,.","ZXCVBNM!?","_\\|~<>+='",3,key_w)
@@ -1466,7 +1669,7 @@ function Keyboard.Create(area)
     return kb
 end
 
-function Keyboard:Show(face)
+function Keyboard:Show(face) 
     for i = 1,4 do
         for j = 1,#self[i] do
             self[i][j]:EnableInput(true)
@@ -1494,37 +1697,7 @@ end
 
 local mykb = Keyboard.Create()
 
-function OpenOrCloseKeyboard(self)
-    if mykb.open == 0 then 
-        -- self.tl:SetLabel("")
-        -- self.tl:SetHorizontalAlign("LEFT")
-        mykb.typingarea = self
-        CloseColorWheel(color_wheel)
-        DPrint("to open")
-        mykb:Show(1)
-        backdrop:SetClipRegion(0,mykb.h,ScreenWidth(),ScreenHeight())
-    else 
-        DPrint("to close")
-        mykb:Hide()
-        backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
-    end
-end
-
-function OpenOrCloseNumericKeyboard(self)
-    if mykb.open == 0 then 
-        mykb.typingarea = self
-        CloseColorWheel(color_wheel)
-        DPrint("to open")
-        mykb:Show(3)
-        backdrop:SetClipRegion(0,mykb.h,ScreenWidth(),ScreenHeight())
-    else 
-        DPrint("to close")
-        mykb:Hide()
-        backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
-    end
-end
-
------------- edit/release mode --------------
+------------ v11.edit/release mode --------------
 function ChangeMode(self)
     if current_mode == modes[1] then
         DPrint("mode: release")
@@ -1552,211 +1725,14 @@ moderegion:Handle("OnDoubleTap",ChangeMode)
 moderegion:SetAnchor("TOPLEFT",UIParent,"TOPLEFT")
 moderegion:Show()
 
----------------------- moving dialog --------------------------
-function CreateOptions(txt,w)
-    local r = Region('region','dialog',UIParent)
-    r.tl = r:TextLabel()
-    r.tl:SetLabel(txt)
-    r.tl:SetFontHeight(16)
-    r.tl:SetColor(0,0,0,255) 
-    r.tl:SetHorizontalAlign("JUSTIFY")
-    r.tl:SetShadowColor(255,255,255,255)
-    r.tl:SetShadowOffset(1,1)
-    r.tl:SetShadowBlur(1)
-    r.t = r:Texture(200,200,200,255)
-    r:SetWidth(w)
-    r:SetHeight(50)
-    return r
-end
 
-function OKclicked(self)
-    local dd = self.parent
-    d1 = tonumber(dd[1][2].tl:Label())
-    d2 = tonumber(dd[2][2].tl:Label())
-    if d1 <= 0 or d1 >= 13 then
-        DPrint("Speed must be in the range (0,13]")
-        return
-    end
-    if d2 >= 360 or d2 < 0 then
-        DPrint("Direction must be in the range [0,360)")
-        return
-    end
-
-    local region = dd.caller
-    local deg = d2 * math.pi / 180
-    region.speed = d1
-    region.dy = d1*math.sin(deg)
-    region.dx = d1*math.cos(deg)
-    region.bounceobjects = dd.bounceobjects
-    region.bounceremoveobjects = dd.bounceremoveobjects
-    region.bound = boundary 
-
-    CloseMyDialog()
-    StartMoving(region,0)
-end
-
-function CANCELclicked(self)
-    CloseMyDialog()
-end
-
-function SelectBounceObject(self)
-    self.parent.bouncetype = 0
-    if self.parent.bounceobjects.dirty == 0 then
-        self.parent[3][2].tl:SetLabel("")
-    end
-end
-
-function SelectBounceObjectRemove(self)
-    self.parent.bouncetype = 1
-    if self.parent.bounceremoveobjects.dirty == 0 then
-        self.parent[4][2].tl:SetLabel("")
-    end
-end
-
-local mydialog = {}
-mydialog.title = Region('region','dialog',UIParent)
-mydialog.title.t = mydialog.title:Texture(240,240,240,255)
-mydialog.title.tl = mydialog.title:TextLabel()
-mydialog.title.tl:SetLabel("Move! Touch the region to stop moving.")
-mydialog.title.tl:SetFontHeight(16)
-mydialog.title.tl:SetColor(0,0,0,255) 
-mydialog.title.tl:SetHorizontalAlign("JUSTIFY")
-mydialog.title.tl:SetShadowColor(255,255,255,255)
-mydialog.title.tl:SetShadowOffset(1,1)
-mydialog.title.tl:SetShadowBlur(1)
-mydialog.title:SetWidth(400)
-mydialog.title:SetHeight(50)
-mydialog.title:SetAnchor("CENTER",UIParent,"CENTER")
-mydialog.hint = {{"speed (1 to 13, slow to fast)",moving_default_speed},{"direction (degrees)",moving_default_dir},{"select objects to bounce from","click here"},{"select objects to bounce from and remove","click here"},{"OK","CANCEL"}}
-mydialog.bounceobjects = {}
-mydialog.bounceremoveobjects = {}
-mydialog.bouncetype = 0 -- 1:remove after bounce, 0:just bounce
-mydialog.ready = 0
-mydialog.caller = nil
-for i = 1,#mydialog.hint do
-    mydialog[i] = {}
-    mydialog[i][1] = CreateOptions(mydialog.hint[i][1],250)
-    mydialog[i][2] = CreateOptions(mydialog.hint[i][2],150)
-    mydialog[i][2]:SetAnchor("LEFT",mydialog[i][1],"RIGHT")
-    mydialog[i][1].parent = mydialog
-    mydialog[i][2].parent = mydialog
-end
-mydialog[1][2]:Handle("OnTouchDown",OpenOrCloseNumericKeyboard)
-mydialog[2][2]:Handle("OnTouchDown",OpenOrCloseNumericKeyboard)
-mydialog[3][2]:Handle("OnTouchDown",SelectBounceObject)
-mydialog[4][2]:Handle("OnTouchDown",SelectBounceObjectRemove)
-mydialog[5][1]:Handle("OnTouchDown",OKclicked)
-mydialog[5][2]:Handle("OnTouchDown",CANCELclicked)
-
-mydialog[1][1]:SetAnchor("TOPLEFT",mydialog.title,"BOTTOMLEFT")
-
-for i = 2,#mydialog.hint do
-    mydialog[i][1]:SetAnchor("TOPLEFT",mydialog[i-1][1],"BOTTOMLEFT")
-end
-
-function OpenMyDialog(v)
-    mydialog.title:Show()
-    mydialog.title:MoveToTop()
-    mydialog.caller = v
-    DPrint(v:Name())
-    while #mydialog.bounceobjects > 0 do
-        table.remove(mydialog.bounceobjects)
-    end
-    while #mydialog.bounceremoveobjects > 0 do
-        table.remove(mydialog.bounceremoveobjects)
-    end
-    mydialog[1][2].tl:SetLabel(mydialog.hint[1][2])
-    mydialog[2][2].tl:SetLabel(mydialog.hint[2][2])
-    mydialog[3][2].tl:SetLabel(mydialog.hint[3][2])
-    mydialog[4][2].tl:SetLabel(mydialog.hint[4][2])
-    for i = 1,#mydialog.hint do
-        mydialog[i][1]:Show()
-        mydialog[i][2]:Show()
-        mydialog[i][1]:MoveToTop()
-        mydialog[i][2]:MoveToTop()
-        mydialog[i][2]:EnableInput(true)
-    end
-    mydialog[#mydialog.hint][1]:EnableInput(true)
-    mydialog.ready = 1
-    mydialog.bouncetype = 0
-    mydialog.bounceobjects.dirty = 0
-    mydialog.bounceremoveobjects.dirty = 0
-    backdrop:EnableInput(false)
-end
-
-function CloseMyDialog()
-    mydialog.title:Hide()
-    for i = 1,#mydialog.hint do
-        mydialog[i][1]:Hide()
-        mydialog[i][2]:Hide()
-        mydialog[i][2]:EnableInput(false)
-    end
-    
-    mydialog[#mydialog.hint][1]:EnableInput(false)
-    mykb:Hide()
-    mydialog.ready = 0
-    backdrop:EnableInput(true)
-end
-
-function BeBouncedObject(self)
-    if self.id == mydialog.caller.id then
-        DPrint("Please select objects other than "..mydialog.caller:Name())
-        return
-    end
-    local found1 = 0 -- bounceobjects
-    local found2 = 0 -- bounceremoveobjects
-    for i = 1,#mydialog.bounceremoveobjects do
-        if mydialog.bounceremoveobjects[i] == self.id then
-            found2 = 1
-            break
-        end
-    end
-    if found2 == 0 then
-        for i = 1,#mydialog.bounceobjects do
-            if mydialog.bounceobjects[i] == self.id then
-                found1 = 1
-                break
-            end
-        end
-    end
-        
-    if found1 == 0 and found2 == 0 then
-        if mydialog.bouncetype == 0 then
-            table.insert(mydialog.bounceobjects,self.id)
-            mydialog[3][2].tl:SetLabel(mydialog[3][2].tl:Label()..self:Name().." ")
-            mydialog.bounceobjects.dirty = 1
-            DPrint(self:Name().." selected to bounceobjects")
-        else
-            table.insert(mydialog.bounceremoveobjects,self.id)
-            mydialog[4][2].tl:SetLabel(mydialog[4][2].tl:Label()..self:Name().." ")
-            mydialog.bounceremoveobjects.dirty = 1
-            DPrint(self:Name().." selected to bounceremoveobjects")
-        end
-    else 
-        DPrint(self:Name().." already selected ("..found1..","..found2..")")
-    end
-end
-
-
-------------- trashbin -------------
+------------- v12.trashbin -------------
 local trashbin = Region('region','trashbin',UIParent)
 trashbin.t = trashbin:Texture("trashbin.png")
 trashbin:SetWidth(2*HEIGHT_LINE)
 trashbin:SetHeight(2*HEIGHT_LINE)
 trashbin:SetAnchor("BOTTOMRIGHT",UIParent,"BOTTOMRIGHT")
 trashbin.yes = 0
-
-function OverlapTrashbin(self)
-    if self:RegionOverlap(trashbin) then
-        DPrint("Do you want to remove "..self:Name().."?")
-        self.t:SetTexture(255,0,0,250)
-        trashbin.yes = 1
-    else
-        DPrint("you can move to the trashbin to remove the object")
-        VSetTexture(self)
-        trashbin.yes = 0
-    end
-end
 
 function MoveToTrashbin(v)
     Unstick(v)
@@ -1773,47 +1749,8 @@ function MoveToTrashbin(v)
     CloseMenuBar()
 end
 
-function HoldToTrigger(self, elapsed)
-    x,y = self:Center()
-    
-    if self.holdtime <= 0 then
-        self.x = x 
-        self.y = y
-        DPrint("Menu Opened")
-        OpenMenuBar(self)
-        trashbin:Show()
-        trashbin:MoveToTop()
-        self:Handle("OnUpdate",nil)
-        self:Handle("OnUpdate",OverlapTrashbin)
-    else 
-        if math.abs(self.x - x) > 10 or math.abs(self.y - y) > 10 then
-            self:Handle("OnUpdate",nil)
-            self:Handle("OnUpdate",VUpdate)
-        end
-        self.holdtime = self.holdtime - elapsed
-    end
-end
-
-function HoldTrigger(self)
-    self.holdtime = 0.5
-    self.x,self.y = self:Center()
-    self:Handle("OnUpdate",nil)
-    self:Handle("OnUpdate",HoldToTrigger)
-end
-
-function DeTrigger(self)
-    self.eventlist["OnUpdate"].currentevent = nil
-    self:Handle("OnUpdate",nil)
-    self:Handle("OnUpdate",VUpdate)
-    self:Show()
-    if trashbin.yes == 1 then
-        MoveToTrashbin(self)
-        trashbin.yes = 0
-    end
-    trashbin:Hide()
-end
-
--------------- anchor --------------
+-------------- v13.anchorv --------------
+-- shows on each created region, click to un/lock region's position
 function LockOrUnlock(self)
     if anchorv.caller.fixed == 1 then
         DPrint("unlock")
@@ -1837,7 +1774,7 @@ anchorv:SetWidth(30)
 anchorv:SetHeight(30)
 
 
------------ basic v events --------------
+----------- v events --------------
 function CloseMenubarHelper()
     if menubar.show == 1 then
         for i = 1,#menubar do
@@ -1965,7 +1902,6 @@ function CloseSharedStuff(self)
     
 end
 
-
 function AddAnchorIcon(self)
     if self.fixed == 1 then
         anchorv:Texture("lock.png")
@@ -1978,11 +1914,114 @@ function AddAnchorIcon(self)
     anchorv.caller = self
 end
 
------------ background region events -----------
------------- v event -------------
+function OpenOrCloseKeyboard(self)
+    if mykb.open == 0 then 
+        -- self.tl:SetLabel("")
+        -- self.tl:SetHorizontalAlign("LEFT")
+        mykb.typingarea = self
+        CloseColorWheel(color_wheel)
+        DPrint("to open")
+        mykb:Show(1)
+        backdrop:SetClipRegion(0,mykb.h,ScreenWidth(),ScreenHeight())
+    else 
+        DPrint("to close")
+        mykb:Hide()
+        backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
+    end
+end
+
+function BeBouncedObject(self) -- add self.id to mydialog.bounceobjects or bounceremoveobjects list with no duplicates
+    if self.id == mydialog.caller.id then
+        DPrint("Please select objects other than "..mydialog.caller:Name())
+        return
+    end
+    local found1 = 0 -- bounceobjects
+    local found2 = 0 -- bounceremoveobjects
+    for i = 1,#mydialog.bounceremoveobjects do
+        if mydialog.bounceremoveobjects[i] == self.id then
+            found2 = 1
+            break
+        end
+    end
+    if found2 == 0 then
+        for i = 1,#mydialog.bounceobjects do
+            if mydialog.bounceobjects[i] == self.id then
+                found1 = 1
+                break
+            end
+        end
+    end
+        
+    if found1 == 0 and found2 == 0 then
+        if mydialog.bouncetype == 0 then
+            table.insert(mydialog.bounceobjects,self.id)
+            mydialog[3][2].tl:SetLabel(mydialog[3][2].tl:Label()..self:Name().." ")
+            mydialog.bounceobjects.dirty = 1
+            DPrint(self:Name().." selected to bounceobjects")
+        else
+            table.insert(mydialog.bounceremoveobjects,self.id)
+            mydialog[4][2].tl:SetLabel(mydialog[4][2].tl:Label()..self:Name().." ")
+            mydialog.bounceremoveobjects.dirty = 1
+            DPrint(self:Name().." selected to bounceremoveobjects")
+        end
+    else 
+        DPrint(self:Name().." already selected ("..found1..","..found2..")")
+    end
+end
+
+function OverlapTrashbinEvent(self) -- event to check whether self overlaps with trashbin
+    if self:RegionOverlap(trashbin) then 
+        DPrint("Do you want to remove "..self:Name().."?")
+        self.t:SetTexture(255,0,0,250)
+        trashbin.yes = 1
+    else
+        DPrint("you can move to the trashbin to remove the object")
+        VSetTexture(self)
+        trashbin.yes = 0
+    end
+end
+
+function HoldToTrigger(self, elapsed) -- for long tap
+    x,y = self:Center()
+    
+    if self.holdtime <= 0 then
+        self.x = x 
+        self.y = y
+        DPrint("Menu Opened")
+        OpenMenuBar(self)
+        trashbin:Show()
+        trashbin:MoveToTop()
+        self:Handle("OnUpdate",nil)
+        self:Handle("OnUpdate",OverlapTrashbinEvent)
+    else 
+        if math.abs(self.x - x) > 10 or math.abs(self.y - y) > 10 then
+            self:Handle("OnUpdate",nil)
+            self:Handle("OnUpdate",VUpdate)
+        end
+        self.holdtime = self.holdtime - elapsed
+    end
+end
+
+function HoldTrigger(self) -- for long tap
+    self.holdtime = 0.5
+    self.x,self.y = self:Center()
+    self:Handle("OnUpdate",nil)
+    self:Handle("OnUpdate",HoldToTrigger)
+end
+
+function DeTrigger(self) -- for long tap
+    self.eventlist["OnUpdate"].currentevent = nil
+    self:Handle("OnUpdate",nil)
+    self:Handle("OnUpdate",VUpdate)
+    self:Show()
+    if trashbin.yes == 1 then
+        MoveToTrashbin(self)
+        trashbin.yes = 0
+    end
+    trashbin:Hide()
+end
 
 function VDoubleTap(self)
-    --ChangeColor(self)
     for k = 1,#self.eventlist["OnDoubleTap"] do
         self.eventlist["OnDoubleTap"][k](self)
     end
@@ -2023,7 +2062,7 @@ function VUpdate(self,e)
     end
 end
 
-function PlainVRegion(r)
+function PlainVRegion(r) -- customized parameter initialization of region, events are initialized in VRegion()
     r.selected = 0 -- for menubar
     r.duplicatelist = {} -- for duplicate set
     
@@ -2050,7 +2089,6 @@ function PlainVRegion(r)
     r.reventlist["OnShow"] = {}
     r.reventlist["OnHide"] = {}
     r.reventlist["OnLongTap"] = {}
-    r.signallist = {} -- customized signal
     
     -- initialize for stick
     r.group = r.id
@@ -2102,7 +2140,7 @@ function PlainVRegion(r)
     r.text_sharee = -1
 end
 
-function VRegion(ttype,name,parent,id)
+function VRegion(ttype,name,parent,id) -- customized initialization of region
     local r = Region(ttype,"R#"..id,parent)
     r.tl = r:TextLabel()
     r.t = r:Texture()
@@ -2141,7 +2179,7 @@ function CreateorRecycleregion(ftype, name, parent)
     return region
 end
 
-------------------------------------------------------------------
+----------------- v14.pagebutton -------------------
 local pagebutton=Region('region', 'pagebutton', UIParent)
 pagebutton:SetWidth(pagersize)
 pagebutton:SetHeight(pagersize)

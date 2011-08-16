@@ -89,30 +89,28 @@ end
 function DisableMove(vv)
     DPrint("lock")
     anchorv:Texture("lock.png")
-    anchorv.caller.fixed = 1
-    anchorv.caller:EnableMoving(false)
-    anchorv.caller:EnableResizing(false)
+    vv.fixed = 1
+    vv:EnableMoving(false)
+    vv:EnableResizing(false)
 end
 
 function EnableMove(vv)
     DPrint("unlock")
     anchorv:Texture("unlock.png")
-    anchorv.caller.fixed = 0
-    anchorv.caller:EnableMoving(true)
-    anchorv.caller:EnableResizing(true)
+    vv.fixed = 0
+    vv:EnableMoving(true)
+    vv:EnableResizing(true)
 end
 
 ------------------ v1.backdrop ---------------------
 function TouchDown(self)
-    if current_mode == modes[1] then
-        CloseMenuBar()
+    CloseSharedStuff(nil)
         
-        local region = CreateorRecycleregion('region', 'backdrop', UIParent)
-        local x,y = InputPosition()
-        region:Show()
-        region:SetAnchor("CENTER",x,y)
-        DPrint(region:Name().." created, centered at "..x..", "..y)
-    end
+    local region = CreateorRecycleregion('region', 'backdrop', UIParent)
+    local x,y = InputPosition()
+    region:Show()
+    region:SetAnchor("CENTER",x,y)
+    DPrint(region:Name().." created, centered at "..x..", "..y)
 end
 
 function TouchUp(self)
@@ -132,7 +130,6 @@ function Leave(self)
 end
 
 function Move(self,x,y,dx,dy) -- in release mode, when backdrop receives OnMove signal, it moves regions in backdrop's player list within pboundary
-    if current_mode == modes[2] then
         local player_w = 0
         local player_h = 0
         if self.player["bottom"] ~= nil then
@@ -178,7 +175,6 @@ function Move(self,x,y,dx,dy) -- in release mode, when backdrop receives OnMove 
                 self.player["right"]:SetAnchor("RIGHT",pboundary[4],y)
             end
         end
-    end
 end
 
 local backdrop = Region('region', 'backdrop', UIParent)
@@ -191,7 +187,7 @@ backdrop:Handle("OnTouchUp", TouchUp)
 backdrop:Handle("OnDoubleTap", DoubleTap)
 backdrop:Handle("OnEnter", Enter)
 backdrop:Handle("OnLeave", Leave)
-backdrop:Handle("OnMove",Move)
+backdrop:Handle("OnMove",nil)
 backdrop:EnableInput(true)
 backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
 backdrop:EnableClipping(true)
@@ -336,12 +332,11 @@ local move_step = 10
 local move_holdtime = 0.01
 
 function ControllerTouchDown(self)
-    CloseSharedStuff(self.caller)
+    CloseSharedStuff(nil)
     if current_mode == modes[2] then
         DisableMove(self.caller)
         self:EnableMoving(false)
     else
-        EnableMove(self.caller)
         self:EnableMoving(true)
     end
     self.holdtime = move_holdtime
@@ -767,11 +762,11 @@ function OpenOrCloseNumericKeyboard(self)
     if mykb.open == 0 then 
         mykb.typingarea = self
         CloseColorWheel(color_wheel)
-        DPrint("keyboard opened")
+        DPrint("Keyboard opened.")
         mykb:Show(3)
         backdrop:SetClipRegion(0,mykb.h,ScreenWidth(),ScreenHeight())
     else 
-        DPrint("keyboard closed")
+        DPrint("Keyboard closed.")
         mykb:Hide()
         backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
     end
@@ -791,7 +786,7 @@ mydialog.title.tl:SetShadowBlur(1)
 mydialog.title:SetWidth(400)
 mydialog.title:SetHeight(50)
 mydialog.title:SetAnchor("BOTTOM",UIParent,"CENTER",0,100)
-mydialog.hint = {{"speed (1 to 20, slow to fast)",moving_default_speed},{"direction (degrees)",moving_default_dir},{"select objects to bounce from","click here"},{"select objects to bounce from and remove","click here"},{"OK","CANCEL"}}
+mydialog.hint = {{"Speed (1 to 20, slow to fast)",moving_default_speed},{"Direction (degrees)",moving_default_dir},{"Select Vs to bounce from","Click here"},{"Select Vs to bounce from and remove","Click here"},{"OK","CANCEL"}}
 mydialog.bounceobjects = {}
 mydialog.bounceremoveobjects = {}
 mydialog.bouncetype = 0 -- 1:remove after bounce, 0:just bounce
@@ -901,7 +896,7 @@ end
 function OpenOrCloseMenu(v)
     DPrint(v.tl:Label())
     if v.menu.open == 0 then
-        v.backupfunc(v,v.parent.caller)
+        v.backupfunc(v,v.boss.v)
         v.menu:OpenMenu()
     else 
         v.menu:CloseMenu()
@@ -1002,7 +997,7 @@ end
 
 ------------- menu helper functions and events --------------
 text_size_list = {"8","10","12","14","16","20","24","28","32","36"}
-text_position_list = {"top left","top center","top right","middle left","middle center","middle right","bottom left","bottom center","bottom right"}
+text_position_list = {"top left","top center","top right","middle left","centered","middle right","bottom left","bottom center","bottom right"}
 text_position_hor_list = {"LEFT","CENTER","RIGHT","LEFT","CENTER","RIGHT","LEFT","CENTER","RIGHT"}
 text_position_ver_list = {"TOP","TOP","TOP","MIDDLE","MIDDLE","MIDDLE","BOTTOM","BOTTOM","BOTTOM"}
 blend_mode_list = {"DISABLED", "BLEND", "ALPHAKEY", "ADD", "MOD", "SUB"}
@@ -1013,7 +1008,7 @@ function Unstick(v)
     local id = v.id
     local flag = 0
     if er ~= -1 then -- it is sticked to other
-        output = output.."a: "..v.sticker:Name().." releases "..v:Name()..". "
+        output = output.."R#"..v.sticker.." releases "..v:Name()..". "
         for k,ee in pairs(regions[er].stickee) do
             if ee == id then
                 table.remove(regions[er].stickee,k)
@@ -1028,7 +1023,7 @@ function Unstick(v)
         flag = 1
     end
     if (#v.stickee > 0) then
-        output = output.."b: "..v:Name().." releases"
+        output = output.." "..v:Name().." releases"
         flag = 1
         for k,ee in pairs(v.stickee) do -- other is sticked to it
             output = output.." R#"..ee
@@ -1045,7 +1040,7 @@ function Unstick(v)
     end
     
     if flag == 0 then
-        DPrint(v:Name().." nothing to unstick")
+        DPrint("Nothing to unstick for "..v:Name())
     else
         DPrint(output)
     end
@@ -1194,17 +1189,7 @@ function StartMovingEvent(r,e) -- event called with signal OnUpdate. parameters 
                 for k,i in pairs (r.bounceremoveobjects) do
                     TouchObject(r,regions[i])
                     if r.touch ~= "none" then
-                        Unstick(regions[i])
-                        
-                        PlainVRegion(regions[i])
-                        regions[i]:EnableInput(false)
-                        regions[i]:EnableMoving(false)
-                        regions[i]:EnableResizing(false)
-                        regions[i]:Hide()
-                        regions[i].usable = 0
-                    
-                        table.insert(recycledregions, regions[i].id)
-                        DPrint(regions[i]:Name().." removed")
+                        RemoveV(regions[i])
                         table.remove(r.bounceremoveobjects,k)
                         break
                     end
@@ -1307,7 +1292,7 @@ function MenuUnstick(opt,vv)
     CloseMenuBar()
 end
 
-function MenuRecycleSelf(opt,vv)
+function RemoveV(vv)
     Unstick(vv)
     
     if vv.text_sharee ~= -1 then
@@ -1318,6 +1303,7 @@ function MenuRecycleSelf(opt,vv)
         end
         regions[vv.text_sharee].text_sharee = -1
     end
+    
     PlainVRegion(vv)
     vv:EnableInput(false)
     vv:EnableMoving(false)
@@ -1327,7 +1313,10 @@ function MenuRecycleSelf(opt,vv)
 
     table.insert(recycledregions, vv.id)
     DPrint(vv:Name().." removed")
-    
+end
+
+function MenuRecycleSelf(opt,vv)
+    RemoveV(vv)
     UnHighlight(opt)
     CloseMenuBar()
 end
@@ -1344,10 +1333,10 @@ end
 
 function MenuKeyboardControl(opt,vv)
     if mykb.enabled == 1 then
-        DPrint("keyboard will be disabled in release mode")
+        DPrint("Keyboard will be disabled in release mode")
         mykb.enabled = 0
     else
-        DPrint("keyboard will be re-enabled in release mode")
+        DPrint("Keyboard will be re-enabled in release mode")
         mykb.enabled = 1
     end
 end
@@ -1368,7 +1357,11 @@ function MenuDuplicate(opt,oldv)
     local x,y = oldv:Center()
     local h = 10 + oldv:Height()
     newv:Show()
-    newv:SetAnchor("CENTER",x,y-h)
+    if y-h < 100 then
+        newv:SetAnchor("CENTER",x,y+h)
+    else
+        newv:SetAnchor("CENTER",x,y-h)
+    end
     DPrint(newv.tl:Label().." Color: ("..newv.r..", "..newv.g..", "..newv.b..", "..newv.a.."). Background pic: "..newv.bkg..". Blend mode: "..newv.t:BlendMode())
     
     return newv
@@ -1376,7 +1369,7 @@ end
 
 function MenuTextSize(opt,vv)
     DPrint("Change to font: "..text_size_list[opt.k])
-    vv.tl:SetFontHeight(tonumber(text_size_list[opt.k]) * 5/3)
+    vv.tl:SetFontHeight(tonumber(text_size_list[opt.k]) * 2) -- scale by 2
     vv.tl:SetLabel(vv.tl:Label())
 end
 
@@ -1387,7 +1380,7 @@ function MenuTextPosition(opt,vv)
 end
 
 function MenuText(opt,vv)
-    DPrint("Current text size: " .. vv.tl:FontHeight() .. ", position: " .. vv.tl:VerticalAlign() .. " & " .. vv.tl:HorizontalAlign())
+    DPrint("Current text size: " .. vv.tl:FontHeight()/2 .. ", position: " .. vv.tl:VerticalAlign() .. " & " .. vv.tl:HorizontalAlign()) -- TODO wrong output
 end
 
 function MenuChangeColor(opt,vv)
@@ -1469,33 +1462,45 @@ function MenuSelfColor(opt,vv)
 end
 
 function MenuStartPlayerLeft(opt,vv) -- this set of 4 functions are for player regions to stick to pboundary when OnMove signal is received by backdrop in release mode
+    if vv.stickboundary ~= "left" then
+        backdrop.player[vv.stickboundary] = nil
+    end
     backdrop.player["left"] = vv
-    DisableMove(vv)
     vv:SetAnchor("LEFT",pboundary[3],(pboundary[2]+pboundary[1])/2)
+    DisableMove(vv)
     UnHighlight(opt)
     CloseMenuBar()
 end
 
 function MenuStartPlayerRight(opt,vv)
+    if vv.stickboudary ~= "right" then
+        backdrop.player[vv.stickboundary] = nil
+    end
     backdrop.player["right"] = vv
-    DisableMove(vv)
     vv:SetAnchor("RIGHT",pboundary[4],(pboundary[2]+pboundary[1])/2)
+    DisableMove(vv)
     UnHighlight(opt)
     CloseMenuBar()
 end
 
 function MenuStartPlayerTop(opt,vv)
+    if vv.stickboudary ~= "top" then
+        backdrop.player[vv.stickboundary] = nil
+    end
     backdrop.player["top"] = vv
-    DisableMove(vv)
     vv:SetAnchor("TOP",(pboundary[3]+pboundary[4])/2,pboundary[2])
+    DisableMove(vv)
     UnHighlight(opt)
     CloseMenuBar()
 end
 
 function MenuStartPlayerBottom(opt,vv)
+    if vv.stickboudary ~= "bottom" then
+        backdrop.player[vv.stickboundary] = nil
+    end
     backdrop.player["bottom"] = vv
-    DisableMove(vv)
     vv:SetAnchor("BOTTOM",(pboundary[3]+pboundary[4])/2,pboundary[1])
+    DisableMove(vv)
     UnHighlight(opt)
     CloseMenuBar()
 end
@@ -1582,7 +1587,7 @@ function MenuGlobalTextSharing(opt,vv)
         DPrint(vv:Name().." is a sharer")
     elseif vv.is_text_receiver == 1 then
         DPrint(vv:Name().." is a receiver")
-    elseif vv.is_text_sharer == 1 then
+    else
         DPrint(vv:Name().." is neither a sharer nor a receiver")
     end
 end
@@ -1646,11 +1651,18 @@ end
 function_list = {}
 
 function_list[1] = {"Basics", {
-                                {"about",MenuAbout,{}},
-                                {"rand picture",MenuPictureRandomly,{}},
-                                {"rand color",MenuColorRandomly,{}},
-                                {"clear background",MenuClearToWhite,{}},
-                                {"transparency control",MenuTransparency,{
+                                {"About",MenuAbout,{}},
+                                {"Random Picture",MenuPictureRandomly,{}},
+                                {"Random Color",MenuColorRandomly,{}},
+                                {"Clear Background",MenuClearToWhite,{}},
+                                {"Unstick",MenuUnstick,{}},
+                                {"Remove",MenuRecycleSelf,{}}
+                            }
+                    }
+                    
+function_list[2] = {"Edit", {
+                                {"Color Wheel",MenuChangeColor,{}},
+                                {"Transparency",MenuTransparency,{
                                                             {blend_mode_list[1],MenuBlendMode,{}},
                                                             {blend_mode_list[2],MenuBlendMode,{}},
                                                             {blend_mode_list[3],MenuBlendMode,{}},
@@ -1658,15 +1670,7 @@ function_list[1] = {"Basics", {
                                                             {blend_mode_list[5],MenuBlendMode,{}},
                                                             {blend_mode_list[6],MenuBlendMode,{}}
                                                         }},
-                                {"unstick",MenuUnstick,{}},
-                                {"remove v",MenuRecycleSelf,{}}
-                            }
-                    }
-                    
-function_list[2] = {"Edit", {
-                                {"color wheel",MenuChangeColor,{}},
-                                {"duplicate",MenuDuplicate,{}},
-                                {"text position",MenuText,{
+                                {"Text Position",MenuText,{
                                                             {text_position_list[1],MenuTextPosition,{}},
                                                             {text_position_list[2],MenuTextPosition,{}},
                                                             {text_position_list[3],MenuTextPosition,{}},
@@ -1677,7 +1681,7 @@ function_list[2] = {"Edit", {
                                                             {text_position_list[8],MenuTextPosition,{}},
                                                             {text_position_list[9],MenuTextPosition,{}}
                                                         }},
-                                {"text font",MenuText,{
+                                {"Text Font",MenuText,{
                                                             {text_size_list[1],MenuTextSize,{}},
                                                             {text_size_list[2],MenuTextSize,{}},
                                                             {text_size_list[3],MenuTextSize,{}},
@@ -1689,37 +1693,38 @@ function_list[2] = {"Edit", {
                                                             {text_size_list[9],MenuTextSize,{}},
                                                             {text_size_list[10],MenuTextSize,{}}
                                                         }},
-                                {"clear text",MenuClearText,{}}  
+                                {"Clear Text",MenuClearText,{}},
+                                {"Duplicate",MenuDuplicate,{}}
                             }
                     }
                             
-function_list[3] = {"Game!", {
-                                {"move",MenuMoving,{}},
-                                {"self fly",MenuSelfFly,{}},
-                                {"self show and hide",MenuSelfShowHide,{}},
-                                {"self change color",MenuSelfColor,{}},
-                                {"stick to boundery",MenuStickBoundary,{
-                                                            {"left",MenuStartPlayerLeft,{}},
-                                                            {"right",MenuStartPlayerRight,{}},
-                                                            {"top",MenuStartPlayerTop,{}},
-                                                            {"bottom",MenuStartPlayerBottom,{}}
+function_list[3] = {"Advanced", {
+                                {"Move",MenuMoving,{}},
+                                {"Self Fly",MenuSelfFly,{}},
+                                {"Self Show and Hide",MenuSelfShowHide,{}},
+                                {"Self Change Color",MenuSelfColor,{}},
+                                {"Stick to Boundery",MenuStickBoundary,{
+                                                            {"Left",MenuStartPlayerLeft,{}},
+                                                            {"Right",MenuStartPlayerRight,{}},
+                                                            {"Top",MenuStartPlayerTop,{}},
+                                                            {"Bottom",MenuStartPlayerBottom,{}}
                                                         }},
-                                {"moving controller",MenuMoveController,{
-                                                            {"left",MenuControllerLeft,{}},
-                                                            {"right",MenuControllerRight,{}},
-                                                            {"top",MenuControllerUp,{}},
-                                                            {"bottom",MenuControllerDown,{}}
+                                {"Add Moving Controller",MenuMoveController,{
+                                                            {"Left",MenuControllerLeft,{}},
+                                                            {"Right",MenuControllerRight,{}},
+                                                            {"Top",MenuControllerUp,{}},
+                                                            {"Bottom",MenuControllerDown,{}}
                                                         }},
-                                {"global text sharing",MenuGlobalTextSharing,{
-                                                            {"set as sender",MenuSetGlobalTextSender,{}},
-                                                            {"set as receiver",MenuSetGlobalTextReceiver,{}}
+                                {"Global Text Sharing",MenuGlobalTextSharing,{
+                                                            {"Set as Sender",MenuSetGlobalTextSender,{}},
+                                                            {"Set as Receiver",MenuSetGlobalTextReceiver,{}}
                                                         }}
                             }
                     }
                     
 function_list[4] = {"Global Control", {
-                                {"autostick control",MenuStickControl,{}},
-                                {"keyboard control",MenuKeyboardControl,{}}
+                                {"Autostick Control",MenuStickControl,{}},
+                                {"Keyboard Control",MenuKeyboardControl,{}}
                             }
                     }
                     
@@ -1780,14 +1785,21 @@ menubar[1]:Hide()
 ------------ v11.edit/release mode --------------
 function ChangeMode(self)
     if current_mode == modes[1] then
-        DPrint("mode: release")
         current_mode = modes[2]
-        CloseMenuBar()
-        CloseColorWheel(color_wheel)
-        mykb:Hide()
+        CloseSharedStuff(nil)
+        backdrop:Handle("OnMove",Move)
+        backdrop:Handle("OnTouchDown",nil)
+        anchorv:Hide()
+        anchorv:EnableInput(false)
+        DPrint("mode: RELEASE")
     else 
-        DPrint("mode: edit")
         current_mode = modes[1]
+        CloseSharedStuff(nil)
+        backdrop:Handle("OnMove",nil)
+        backdrop:Handle("OnTouchDown",TouchDown)
+        anchorv:Hide()
+        anchorv:EnableInput(true)
+        DPrint("mode: EDIT")
     end
     self.tl:SetLabel(current_mode)
 end
@@ -1815,17 +1827,7 @@ trashbin:SetAnchor("BOTTOMRIGHT",UIParent,"BOTTOMRIGHT")
 trashbin.yes = 0
 
 function MoveToTrashbin(v)
-    Unstick(v)
-    
-    PlainVRegion(v)
-    v:EnableInput(false)
-    v:EnableMoving(false)
-    v:EnableResizing(false)
-    v:Hide()
-    v.usable = 0
-
-    table.insert(recycledregions, v.id)
-    DPrint(v:Name().." removed")
+    RemoveV(v)
     CloseMenuBar()
 end
 
@@ -1833,17 +1835,13 @@ end
 -- shows on each created region, click to un/lock region's position
 function LockOrUnlock(self)
     if anchorv.caller.fixed == 1 then
-        DPrint(self.Name().." unlocked")
-        anchorv:Texture("unlock.png")
-        anchorv.caller.fixed = 0
-        anchorv.caller:EnableMoving(true)
-        anchorv.caller:EnableResizing(true)
+        if self.caller.sticker ~= -1 then
+            DPrint(self.caller:Name().." is sticked to R#"..self.caller.sticker..". Go to Menubar->Basics->Unstick.")
+        else
+            EnableMove(self.caller)
+        end
     else
-        DPrint(self.Name().." lock")
-        anchorv:Texture("lock.png")
-        anchorv.caller.fixed = 1
-        anchorv.caller:EnableMoving(false)
-        anchorv.caller:EnableResizing(false)
+        DisableMove(self.caller)
     end
 end
 
@@ -1852,6 +1850,7 @@ anchorv:EnableInput(true)
 anchorv:Handle("OnTouchDown",LockOrUnlock)
 anchorv:SetWidth(30)
 anchorv:SetHeight(30)
+anchorv.caller = nil
 
 
 ----------- v events --------------
@@ -1903,15 +1902,19 @@ function OpenMenuBar(self)
 end
 
 function SelectObj(self)
+    local op = self:Name().." selected. "
+    if self.sticker ~= -1 then
+        op = self:Name().." is sticked to R#"..self.sticker..". "
+    end
     if hold_button.held == 0 then
-        DPrint(self:Name().." selected. LongTap to open menu.")
+        DPrint(op.."LongTap to open menubar.")
         self:MoveToTop()
     else
         if self.id ~= nil then
             if self.selected == 0 then
                 table.insert(menubar.selectedregions,self.id)
                 self.selected = 1
-                DPrint(self:Name().." also selected.")
+                DPrint(op)
             else
                 DPrint(self:Name().." already selected.")
             end
@@ -1946,13 +1949,10 @@ function StickToClosestAnchorPoint(ee,er)
 end
 
 function AutoCheckStick(self)
-    if auto_stick_enabled == 1 then
-        local large = Region()
-        local x = self:Left() - STICK_MARGIN
-        local y = self:Top() + STICK_MARGIN
-        large:SetWidth(self:Width() + STICK_MARGIN * 2)
-        large:SetHeight(self:Height() + STICK_MARGIN * 2)
-        large:SetAnchor("TOPLEFT",x,y)
+    if auto_stick_enabled == 1 and self.sticker == -1 then
+        local x,y = self:Center()
+        self.large:SetWidth(self:Width() + STICK_MARGIN * 2)
+        self.large:SetHeight(self:Height() + STICK_MARGIN * 2)
         
         for i = 1,#regions do -- v is sticker, self is stickee
             local v = regions[i]
@@ -1960,12 +1960,10 @@ function AutoCheckStick(self)
                 -- DPrint("there are other regions")
                 if v.sticker ~= self.id and self.sticker ~= v.id and v.group ~= self.group then
                     -- DPrint("there are other regions to stick to")
-                    if v:RegionOverlap(large) then
+                    if v:RegionOverlap(self.large) then
                         -- DPrint("they overlap")
                         if not v:RegionOverlap(self) then
-                            if self.sticker == -1 then
-                                StickToClosestAnchorPoint(self,v)
-                            end
+                            StickToClosestAnchorPoint(self,v)
                         end
                     end
                 end
@@ -1974,7 +1972,7 @@ function AutoCheckStick(self)
     end
 end
 
-function CloseSharedStuff(self)
+function CloseSharedStuff(self) -- argument can be nil for global use
     if hold_button.held == 0 then
         -- close menubar
         CloseMenuBar()
@@ -2007,17 +2005,33 @@ function OpenOrCloseKeyboard(self)
     if mykb.enabled == 1 or current_mode == modes[1] then
         if mykb.open == 0 then 
             mykb.typingarea = self
-            CloseColorWheel(color_wheel)
-            DPrint("keyboard opened")
+            DPrint("DoubleTap to close keyboard. Go to Menubar->Global Control->Keyboard Control to enable/disable in RELEASE mode.")
             mykb:Show(1)
+            self.kbopen = 1
+            if self.text_sharee ~= -1 then
+                regions[self.text_sharee].kbopen = 1
+            end
             backdrop:SetClipRegion(0,mykb.h,ScreenWidth(),ScreenHeight())
-        else 
-            DPrint("keyboard closed")
+        elseif self.kbopen == 0 then
+            mykb.typingarea.kbopen = 0
+            mykb.typingarea = self
+            self.kbopen = 1
+            if self.text_sharee ~= -1 then
+                regions[self.text_sharee].kbopen = 1
+            end
+            DPrint("DoubleTap to close keyboard. Go to Menubar->Global Control->Keyboard Control to enable/disable in RELEASE mode.")
+            mykb:Show(1)
+        else
+            DPrint("Keyboard closed. Go to Menubar->Global Control->Keyboard Control to enable/disable in RELEASE mode.")
             mykb:Hide()
+            self.kbopen = 0
+            if self.text_sharee ~= -1 then
+                regions[self.text_sharee].kbopen = 0
+            end
             backdrop:SetClipRegion(0,0,ScreenWidth(),ScreenHeight())
         end
     else
-        DPrint("keyboard is disabled in release mode")
+        DPrint("Keyboard disabled. Go to EDIT Mode->Menubar->Global Control->Keyboard Control to enable/disable in RELEASE mode.")
     end
 end
 
@@ -2046,17 +2060,17 @@ function BeBouncedObject(self) -- add self.id to mydialog.bounceobjects or bounc
     if found1 == 0 and found2 == 0 then
         if mydialog.bouncetype == 0 then
             table.insert(mydialog.bounceobjects,self.id)
-            mydialog[3][2].tl:SetLabel(mydialog[3][2].tl:Label()..self:Name().." ")
+            mydialog[3][2].tl:SetLabel(mydialog[3][2].tl:Label().." #"..self.id)
             mydialog.bounceobjects.dirty = 1
             DPrint(self:Name().." selected to bounceobjects")
         else
             table.insert(mydialog.bounceremoveobjects,self.id)
-            mydialog[4][2].tl:SetLabel(mydialog[4][2].tl:Label()..self:Name().." ")
+            mydialog[4][2].tl:SetLabel(mydialog[4][2].tl:Label().." #"..self.id)
             mydialog.bounceremoveobjects.dirty = 1
             DPrint(self:Name().." selected to bounceremoveobjects")
         end
     else 
-        DPrint(self:Name().." already selected ("..found1..","..found2..")")
+        DPrint(self:Name().." already selected.")
     end
 end
 
@@ -2105,42 +2119,41 @@ function DeTrigger(self) -- for long tap
     self.eventlist["OnUpdate"].currentevent = nil
     self:Handle("OnUpdate",nil)
     self:Handle("OnUpdate",VUpdate)
-    self:Show()
+
     if trashbin.yes == 1 then
         MoveToTrashbin(self)
         trashbin.yes = 0
     end
     if trashbin:IsShown() then
         trashbin:Hide()
-        DPrint("")
+    end
+end
+
+function CallEvents(signal,vv)
+    local list = {}
+    if current_mode == modes[1] then
+        list = vv.eventlist[signal]
+    else
+        list = vv.reventlist[signal]
+    end
+    for k = 1,#list do
+        list[k](vv)
     end
 end
 
 function VDoubleTap(self)
-    for k = 1,#self.eventlist["OnDoubleTap"] do
-        self.eventlist["OnDoubleTap"][k](self)
-    end
+    CallEvents("OnDoubleTap",self)
 end
 
 function VTouchUp(self)
-    for k = 1,#self.eventlist["OnTouchUp"] do
-        self.eventlist["OnTouchUp"][k](self)
-    end
+    CallEvents("OnTouchUp",self)
 end
 
 function VTouchDown(self)
-    if current_mode == modes[1] then
-        if mydialog.ready == 1 then
-            BeBouncedObject(self)
-        else
-            for k = 1,#self.eventlist["OnTouchDown"] do
-                self.eventlist["OnTouchDown"][k](self)
-            end
-        end
+    if mydialog.ready == 1 and current_mode == modes[1] then
+        BeBouncedObject(self)
     else
-        for k = 1,#self.reventlist["OnTouchDown"] do
-            self.reventlist["OnTouchDown"][k](self)
-        end
+        CallEvents("OnTouchDown",self)
     end
 end
 
@@ -2157,37 +2170,30 @@ function VUpdate(self,e)
 end
 
 function PlainVRegion(r) -- customized parameter initialization of region, events are initialized in VRegion()
-    r.selected = 0 -- for menubar
-    r.duplicatelist = {} -- for duplicate set
+    r.selected = 0 -- for multiple selection of menubar
+    r.kbopen = 0 -- for keyboard isopen
     
     -- initialize for events and signals
     r.eventlist = {}
     r.eventlist["OnTouchDown"] = {HoldTrigger,CloseSharedStuff,SelectObj,AddAnchorIcon}
     r.eventlist["OnTouchUp"] = {AutoCheckStick,DeTrigger} 
-    r.eventlist["OnDoubleTap"] = {OpenOrCloseKeyboard} -- ChangeColor
+    r.eventlist["OnDoubleTap"] = {CloseSharedStuff,OpenOrCloseKeyboard} 
     r.eventlist["OnUpdate"] = {} 
     r.eventlist["OnUpdate"]["selfshowhide"] = 0
     r.eventlist["OnUpdate"]["selfcolor"] = 0
     r.eventlist["OnUpdate"]["move"] = 0
     r.eventlist["OnUpdate"].currentevent = nil
-    r.eventlist["OnMove"] = {}
-    r.eventlist["OnShow"] = {}
-    r.eventlist["OnHide"] = {}
-    r.eventlist["OnLongTap"] = {}
     r.reventlist = {} -- eventlist for release mode
     r.reventlist["OnTouchDown"] = {}
-    r.reventlist["OnTouchUp"] = {} 
-    r.reventlist["OnDoubleTap"] = {} 
-    r.reventlist["OnUpdate"] = {}
-    r.reventlist["OnMove"] = {}
-    r.reventlist["OnShow"] = {}
-    r.reventlist["OnHide"] = {}
-    r.reventlist["OnLongTap"] = {}
+    r.reventlist["OnTouchUp"] = {AutoCheckStick} 
+    r.reventlist["OnDoubleTap"] = {OpenOrCloseKeyboard}
     
-    -- initialize for stick
+    -- auto stick
     r.group = r.id
     r.sticker = -1
     r.stickee = {}
+    r.large = Region()
+    r.large:SetAnchor("CENTER",r,"CENTER")
     
     -- initialize for moving
     r.random = 0
@@ -2232,6 +2238,9 @@ function PlainVRegion(r) -- customized parameter initialization of region, event
     r.is_text_sender = 0
     r.is_text_receiver = 0
     r.text_sharee = -1
+
+    -- stickboundary
+    r.stickboundary = "none"
 end
 
 function VRegion(ttype,name,parent,id) -- customized initialization of region

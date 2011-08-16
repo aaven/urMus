@@ -499,6 +499,10 @@
 		77FB9275111BA8C30078AAC5 /* UdpClientSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 77FB926D111BA8C30078AAC5 /* UdpClientSocket.m */; };
 		77FB9276111BA8C30078AAC5 /* SandwichUpdateListener.m in Sources */ = {isa = PBXBuildFile; fileRef = 77FB926F111BA8C30078AAC5 /* SandwichUpdateListener.m */; };
 		77FB9277111BA8C30078AAC5 /* SandwichEventManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 77FB9272111BA8C30078AAC5 /* SandwichEventManager.m */; };
+		FE0AA94413F3FA7E002ED4FF /* left.png in Resources */ = {isa = PBXBuildFile; fileRef = FE0AA94313F3FA7E002ED4FF /* left.png */; };
+		FE0AA94613F3FA86002ED4FF /* right.png in Resources */ = {isa = PBXBuildFile; fileRef = FE0AA94513F3FA86002ED4FF /* right.png */; };
+		FE0AA94813F3FA8F002ED4FF /* up.png in Resources */ = {isa = PBXBuildFile; fileRef = FE0AA94713F3FA8F002ED4FF /* up.png */; };
+		FE0AA94A13F3FA98002ED4FF /* down.png in Resources */ = {isa = PBXBuildFile; fileRef = FE0AA94913F3FA98002ED4FF /* down.png */; };
 		FE288BFB13DD9B2900365909 /* lock.png in Resources */ = {isa = PBXBuildFile; fileRef = FE288BF913DD9B2900365909 /* lock.png */; };
 		FE288BFC13DD9B2900365909 /* unlock.png in Resources */ = {isa = PBXBuildFile; fileRef = FE288BFA13DD9B2900365909 /* unlock.png */; };
 		FE8854AB13DEC14C00CC7970 /* trashbin.png in Resources */ = {isa = PBXBuildFile; fileRef = FE8854AA13DEC14C00CC7970 /* trashbin.png */; };
@@ -1126,6 +1130,10 @@
 		77FB9272111BA8C30078AAC5 /* SandwichEventManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = SandwichEventManager.m; path = Classes/Sandwich/SandwichEventManager.m; sourceTree = "<group>"; };
 		77FB9273111BA8C30078AAC5 /* SandwichEventManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SandwichEventManager.h; path = Classes/Sandwich/SandwichEventManager.h; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FE0AA94313F3FA7E002ED4FF /* left.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = left.png; path = Textures/left.png; sourceTree = "<group>"; };
+		FE0AA94513F3FA86002ED4FF /* right.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = right.png; path = Textures/right.png; sourceTree = "<group>"; };
+		FE0AA94713F3FA8F002ED4FF /* up.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = up.png; path = Textures/up.png; sourceTree = "<group>"; };
+		FE0AA94913F3FA98002ED4FF /* down.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = down.png; path = Textures/down.png; sourceTree = "<group>"; };
 		FE288BF913DD9B2900365909 /* lock.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = lock.png; path = Textures/lock.png; sourceTree = "<group>"; };
 		FE288BFA13DD9B2900365909 /* unlock.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = unlock.png; path = Textures/unlock.png; sourceTree = "<group>"; };
 		FE8854AA13DEC14C00CC7970 /* trashbin.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = trashbin.png; path = Textures/trashbin.png; sourceTree = "<group>"; };
@@ -1806,6 +1814,10 @@
 		77F043941123BC3F00CB8C95 /* Textures */ = {
 			isa = PBXGroup;
 			children = (
+				FE0AA94913F3FA98002ED4FF /* down.png */,
+				FE0AA94713F3FA8F002ED4FF /* up.png */,
+				FE0AA94513F3FA86002ED4FF /* right.png */,
+				FE0AA94313F3FA7E002ED4FF /* left.png */,
 				FE8854AA13DEC14C00CC7970 /* trashbin.png */,
 				FE288BF913DD9B2900365909 /* lock.png */,
 				FE288BFA13DD9B2900365909 /* unlock.png */,
@@ -2354,6 +2366,10 @@
 				779BE9E013A9A010002E36DC /* Makefile.am in Resources */,
 				779BE9E113A9A010002E36DC /* Makefile.in in Resources */,
 				779BE9E213A9A010002E36DC /* stamp-h3 in Resources */,
+				FE0AA94413F3FA7E002ED4FF /* left.png in Resources */,
+				FE0AA94613F3FA86002ED4FF /* right.png in Resources */,
+				FE0AA94813F3FA8F002ED4FF /* up.png in Resources */,
+				FE0AA94A13F3FA98002ED4FF /* down.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

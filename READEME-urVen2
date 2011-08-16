@@ -1,0 +1,70 @@
+User Guide for urVen
+by Aaven Jin, August 2011
+University of Michigan Ann Arbor
+aavenj@gmail.com
+
+I. Overview
+urVen is designed for non-programmers to create simple apps by tapping and dragging around. The elementary component is called "region", or simplified as V. To meet multiple design needs of the user, it allows configurations of texture, text, relative position, dis/appearance, moving feature, etc. 
+
+
+II. Terminology
+V: the region that is created by user.
+Backdrop: the black background of urVen. 
+Anchorv: the controller of whether V can be moved around. 
+Sticker/stickee: if A auto sticks to B (See "Menubar->Global Control->Autostick Control"), then A is called stickee and B is called sticker. 
+
+
+III. Design Process
+Create V -> Select Features -> Go to Release Mode
+
+1.Create V
+In EDIT mode, single tapping anywhere on backdrop, you will get a white square V with its id shown. By default, it can be resized with two fingers and moved around. 
+
+2.Select Features
+A) Anchorv
+After clicking on any V, a lock appears on V's top left corner. Single tapping on it sticks or unsticks V's current position. Anchorv is not usable in RELEASE mode. The setting stays unchanged in RELEASE mode. 
+
+B) Menubar
+Stable long tapping (0.5 seconds) on V brings up the Menubar at the bottom. It currently contains four parts: "Basics", "Edit", "Advanced", and "Global Control". Menubar is not usable in RELEASE mode. 
+	i) Basics
+		a) "About": shows V's id, sticker and stickees (which is sticked to V). See "Menubar->Global Control->Autostick Control".
+		b) "Random Picture": randomly changes V's background image from a collection of pictures once.
+		c) "Random Color": randomly changes V's background color (never white) once.
+		d) "Clear Background": clears V's background picture and color.
+		e) "Unstick": V unsticks from its sticker or stickees. See "Menubar->Global Control->Autostick Control".
+		f) "Remove": removes V.
+	ii) Edit
+		a) "Color Wheel": brings up a color map. Single tap and move within it to change V's background color. Double tap the color map to close it. 
+		b) "Transparency": changes V's blend mode: SUB, MOD, ADD, ALPHAKEY, BLEND, or DISABLED.
+		c) "Text Position": changes the position of V's text: top/middle/bottom and left/center/right.
+		d) "Text Size": changes V's text size.
+		e) "Clear Text": clear V's text (this can also be realized with "clear" in Keyboard).
+		f) "Duplicate": creates another region with the same size, background color/image and text size/position as V. 
+	iii) Advanced
+		a) "Move": brings up a dialog for moving configuration. Click the second columns to change moving speed and direction (in degrees), and to choose regions for V to bounce from, and regions to remove after V bounces from them. After OK is clicked, V start to move as configured in both EDIT and RELEASE mode. Single tap on V in EDIT mode to stop, while V will still keep moving in RELEASE mode. 
+		b) "Self Fly": V starts to fly with randomly changing directions. Configuration in "Menubar->Advanced->Move" has nothing to do with this option. Single tap on V in EDIT mode to stop, while V will still keep randomly flying in RELEASE mode.  
+		c) "Self Show and Hide": V starts to appear and disappear within a random interval from 0.25 to 1 seconds. Single tap on V in EDIT mode to stop, while V will still continue to dis/appear in RELEASE mode. 
+		d) "Self Change Color": V starts to randomly change color (never white) every second. Single tap on V in EDIT mode to stop, while V will still keep changing color in RELEASE mode. 
+		e) "Stick to Boundary": sticks V to top/bottom/left/right edge of backdrop. V cannot move in EDIT mode unless anchorv is released. In RELEASE mode, V moves with inputs on backdrop, but always sticks to its specified edge. 
+		f) "Add Moving Controller": adds up/down/left/right controllers to move V in RELEASE mode. Controllers can be moved in EDIT mode, but stay still in RELEASE mode. V is movable in EDIT mode, but not unless controllers are tapped in RELEASE mode. 
+		g) "Global Text Sharing": the text receiver receives text from one of multiple text senders. When either receiver or sender changes its text, the other correspondently changes its contents. Currently only one global text receiver is allowed, but multiple senders is permitted. 
+	iv) Global Control
+		a) "Autostick Control": enables or disables auto-stick among Vs. Vs auto stick to each other when they are close enough. A stickee cannot be moved and its anchorv is disabled to be changed. A stickee cannot be resized either. The setting stays unchanged in RELEASE mode. See "Menubar->Basics->Unstick" to unstick. See "Menubar->Basics->About" to check V's sticker and stickees. 
+		b) "Keyboard Control": enables or disables keyboard in RELEASE mode. See "Keyboard" for usage. 
+
+C) Keyboard
+In EDIT mode, double tapping on V brings up the keyboard. "Shift" changes the keys between lower case and upper case. "Clear" clears V's text (See "Menubar->Edit->Clear Text"). The keyboard can be disabled and re-enabled through "Menubar->Global Control->Keyboard Control". 
+
+D) Hold Button
+In EDIT mode, when Menubar shows up, a HOLD button appears on the left of backdrop. Click on HOLD, and without releasing it select multiple Vs and then specific features from Menubar to realize the features for all of the selected Vs. Hold button is not usable in RELEASE mode. 
+
+3. Go to Release Mode
+Mode controller is on the top left corner of backdrop. Double tapping on it changes the mode between EDIT and RELEASE. 
+
+
+IV. Miscellaneous
+1. Notification messages are shown in the middle of the screen. 
+2. Single tapping on the round circle on the top right corner of backdrop exits urVen. 
+
+
+

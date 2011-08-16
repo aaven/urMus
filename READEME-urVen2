@@ -4,11 +4,11 @@ University of Michigan Ann Arbor
 aavenj@gmail.com
 
 I. Overview
-urVen is designed for non-programmers to create simple apps by tapping and dragging around. The elementary component is called "region", or simplified as V. To meet multiple design needs of the user, it allows configurations of texture, text, relative position, dis/appearance, moving feature, etc. 
+urVen is designed for non-programmers to create simple apps by tapping and dragging around. The elementary component is called "region" or "object", simplified as V. To meet multiple design needs of the user, it allows configurations of texture, text, relative position, dis/appearance, moving feature, etc. 
 
 
 II. Terminology
-V: the region that is created by user.
+V: the region/object that is created by user.
 Backdrop: the black background of urVen. 
 Anchorv: the controller of whether V can be moved around. 
 Sticker/stickee: if A auto sticks to B (See "Menubar->Global Control->Autostick Control"), then A is called stickee and B is called sticker. 
@@ -41,7 +41,7 @@ Stable long tapping (0.5 seconds) on V brings up the Menubar at the bottom. It c
 		e) "Clear Text": clear V's text (this can also be realized with "clear" in Keyboard).
 		f) "Duplicate": creates another region with the same size, background color/image and text size/position as V. 
 	iii) Advanced
-		a) "Move": brings up a dialog for moving configuration. Click the second columns to change moving speed and direction (in degrees), and to choose regions for V to bounce from, and regions to remove after V bounces from them. After OK is clicked, V start to move as configured in both EDIT and RELEASE mode. Single tap on V in EDIT mode to stop, while V will still keep moving in RELEASE mode. 
+		a) "Move": brings up a dialog for moving configuration. Click the second columns to change moving speed and direction (in degrees), and to choose regions for V to bounce from, and regions to remove after V bounces from them. After OK is clicked, V start to move as configured in both EDIT and RELEASE mode. Single tap on V in EDIT mode to stop, while V will still keep moving in RELEASE mode. Note that bouncing feature works fine for V to bounce from unmoving regions, otherwise with moving regions problems arise.
 		b) "Self Fly": V starts to fly with randomly changing directions. Configuration in "Menubar->Advanced->Move" has nothing to do with this option. Single tap on V in EDIT mode to stop, while V will still keep randomly flying in RELEASE mode.  
 		c) "Self Show and Hide": V starts to appear and disappear within a random interval from 0.25 to 1 seconds. Single tap on V in EDIT mode to stop, while V will still continue to dis/appear in RELEASE mode. 
 		d) "Self Change Color": V starts to randomly change color (never white) every second. Single tap on V in EDIT mode to stop, while V will still keep changing color in RELEASE mode. 
@@ -56,7 +56,7 @@ C) Keyboard
 In EDIT mode, double tapping on V brings up the keyboard. "Shift" changes the keys between lower case and upper case. "Clear" clears V's text (See "Menubar->Edit->Clear Text"). The keyboard can be disabled and re-enabled through "Menubar->Global Control->Keyboard Control". 
 
 D) Hold Button
-In EDIT mode, when Menubar shows up, a HOLD button appears on the left of backdrop. Click on HOLD, and without releasing it select multiple Vs and then specific features from Menubar to realize the features for all of the selected Vs. Hold button is not usable in RELEASE mode. 
+In EDIT mode, when Menubar shows up, a HOLD button appears on the left of backdrop. Click on HOLD, and without releasing it select multiple Vs and then specific features from Menubar to realize the features for all of the selected Vs. Hold button is not usable in RELEASE mode. Setting for "Menubar->Advanced->Move" for multiple Vs applies to only one V. 
 
 3. Go to Release Mode
 Mode controller is on the top left corner of backdrop. Double tapping on it changes the mode between EDIT and RELEASE. 

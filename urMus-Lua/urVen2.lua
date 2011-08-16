@@ -1185,14 +1185,12 @@ function StartMovingEvent(r,e) -- event called with signal OnUpdate. parameters 
         end
         
         if r.touch == "none" then
-            if #r.bounceremoveobjects > 0 then
-                for k,i in pairs (r.bounceremoveobjects) do
-                    TouchObject(r,regions[i])
-                    if r.touch ~= "none" then
-                        RemoveV(regions[i])
-                        table.remove(r.bounceremoveobjects,k)
-                        break
-                    end
+            for k = 1,#r.bounceremoveobjects do
+                TouchObject(r,regions[r.bounceremoveobjects[k]])
+                if r.touch ~= "none" then
+                    RemoveV(regions[r.bounceremoveobjects[k]])
+                    table.remove(r.bounceremoveobjects,k)
+                    break
                 end
             end
         end
